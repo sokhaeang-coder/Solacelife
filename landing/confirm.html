@@ -1,113 +1,174 @@
 <!DOCTYPE html>
-<!-- v3 — consent accept/decline -->
+<!-- v4 — landing page visual: animated sky + swaying grass, text-on-scene (Option C) -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Solace Life — Confirm Invitation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Full-page scene ──────────────────────────────────────── */
+    .scene {
+      position: relative;
       min-height: 100vh;
-      background: linear-gradient(160deg,
-        #1E1248 0%,
-        #251458 18%,
-        #2E1660 35%,
-        #381660 52%,
-        #5A1848 72%,
-        #4A0810 100%
-      );
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
+      overflow: hidden;
+      padding: 40px 24px 80px;
     }
 
-    /* Ambient orbs */
-    .orb {
-      position: fixed;
+    /* ── Sky — six phases cycling ─────────────────────────────── */
+    .sky {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      animation: skyPhase 54s ease-in-out infinite;
+    }
+    .sky-1 { background: linear-gradient(to bottom, #5A4890 0%, #8B68AA 28%, #C47890 52%, #A03858 70%, #3A1820 100%); animation-delay: 0s; }
+    .sky-2 { background: linear-gradient(to bottom, #6B5A9E 0%, #A870A0 28%, #E06030 52%, #F4A020 70%, #4A3020 100%); animation-delay: -9s; }
+    .sky-3 { background: linear-gradient(to bottom, #7878B8 0%, #B890A8 30%, #E09040 54%, #F4B830 72%, #503820 100%); animation-delay: -18s; }
+    .sky-4 { background: linear-gradient(to bottom, #7A5A9C 0%, #C06080 30%, #E05030 52%, #F4A020 70%, #443020 100%); animation-delay: -27s; }
+    .sky-5 { background: linear-gradient(to bottom, #5C4898 0%, #B05080 28%, #D83C30 50%, #F08020 68%, #2A1810 100%); animation-delay: -36s; }
+    .sky-6 { background: linear-gradient(to bottom, #4A3C88 0%, #8B5A98 30%, #B04060 54%, #7A2030 74%, #241418 100%); animation-delay: -45s; }
+
+    @keyframes skyPhase {
+      0%   { opacity: 0; }
+      6%   { opacity: 1; }
+      72%  { opacity: 1; }
+      83%  { opacity: 0; }
+      100% { opacity: 0; }
+    }
+
+    /* ── Sun glow ─────────────────────────────────────────────── */
+    .sun-glow {
+      position: absolute;
+      bottom: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      height: 120px;
       border-radius: 50%;
-      filter: blur(80px);
+      filter: blur(28px);
+      animation: sunShift 54s ease-in-out infinite;
       pointer-events: none;
-      z-index: 0;
     }
-    .orb1 { width: 400px; height: 400px; top: -80px; right: -60px;  background: rgba(140, 24, 72, 0.25); }
-    .orb2 { width: 350px; height: 350px; bottom: -60px; left: -40px; background: rgba(74, 8, 16, 0.35);  }
-    .orb3 { width: 250px; height: 250px; top: 30%; left: 20%;        background: rgba(46, 22, 96, 0.20);  }
+    @keyframes sunShift {
+      0%   { background: radial-gradient(ellipse, rgba(180,56,85,0.45)  0%, transparent 70%); }
+      11%  { background: radial-gradient(ellipse, rgba(244,160,32,0.65) 0%, transparent 70%); }
+      22%  { background: radial-gradient(ellipse, rgba(244,184,48,0.55) 0%, transparent 70%); }
+      44%  { background: radial-gradient(ellipse, rgba(244,160,32,0.65) 0%, transparent 70%); }
+      67%  { background: radial-gradient(ellipse, rgba(240,128,32,0.70) 0%, transparent 70%); }
+      89%  { background: radial-gradient(ellipse, rgba(160,48,80,0.40)  0%, transparent 70%); }
+      100% { background: radial-gradient(ellipse, rgba(180,56,85,0.45)  0%, transparent 70%); }
+    }
 
-    .card {
-      position: relative;
+    /* ── Overlay — darkens bottom so grass reads, softens top ─── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(20,15,5,0.18)  0%,
+        rgba(10,8,2,0.05)   40%,
+        rgba(5,4,1,0.38)    75%,
+        rgba(2,2,1,0.62)    100%
+      );
       z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ── Grass — z-index ABOVE overlay so blades show ─────────── */
+    .grass-wrap {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 38%;
+      z-index: 2;   /* above overlay */
+      pointer-events: none;
+    }
+
+    .blade {
+      position: absolute;
+      bottom: 0;
+      width: 2px;
+      border-radius: 2px 2px 0 0;
+      transform-origin: bottom center;
+      animation: sway linear infinite alternate;
+    }
+
+    @keyframes sway {
+      from { transform: rotate(var(--lean-from)); }
+      to   { transform: rotate(var(--lean-to)); }
+    }
+
+    /* ── Content — above grass ────────────────────────────────── */
+    .content {
+      position: relative;
+      z-index: 3;
       max-width: 480px;
       width: 100%;
-      background: linear-gradient(160deg, rgba(42,8,24,0.92) 0%, rgba(74,20,40,0.92) 100%);
-      border: 1px solid rgba(140,24,72,0.35);
-      border-radius: 28px;
-      padding: 44px 36px;
       text-align: center;
-      backdrop-filter: blur(20px);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
     }
 
-    /* Brand */
-    .logo-wrap {
-      margin-bottom: 28px;
+    /* ── Logo ─────────────────────────────────────────────────── */
+    .logo {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.2rem;
+      color: #F6F3EC;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      margin-bottom: 6px;
     }
-    .logo-ring {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #4A1828, #3A0C1A);
-      border: 2px solid rgba(212,120,154,0.3);
-      box-shadow: 0 0 40px rgba(140,24,72,0.4);
-      font-size: 32px;
-      margin-bottom: 14px;
-    }
-    .brand-name {
-      font-size: 22px;
-      font-weight: 700;
-      color: #EEE8F5;
-      letter-spacing: -0.3px;
-    }
-    .brand-sub {
-      font-size: 13px;
-      color: #D4789A;
-      margin-top: 4px;
+    .logo-sub {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(246,243,236,0.65);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.4);
+      margin-bottom: 56px;
     }
 
-    /* Spinner */
-    .spinner-wrap {
-      padding: 32px 0;
-    }
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(212,120,154,0.2);
-      border-top-color: #E8A87C;
-      border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-      margin: 0 auto 18px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-text {
-      font-size: 15px;
-      color: #C490A0;
-    }
-
-    /* States */
+    /* ── States ───────────────────────────────────────────────── */
     .state { display: none; }
     .state.active { display: block; }
 
+    /* Spinner */
+    .spinner {
+      width: 44px; height: 44px;
+      border: 2.5px solid rgba(246,243,236,0.2);
+      border-top-color: rgba(246,243,236,0.8);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner-text {
+      font-size: 15px;
+      color: rgba(246,243,236,0.75);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+    }
+
+    /* Icon */
     .icon-big {
-      font-size: 56px;
+      font-size: 60px;
       line-height: 1;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      display: block;
       animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,0.4));
     }
     @keyframes popIn {
       from { transform: scale(0.3); opacity: 0; }
@@ -115,58 +176,64 @@
     }
 
     h1 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #EEE8F5;
-      margin-bottom: 12px;
-      line-height: 1.25;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.7rem, 5vw, 2.4rem);
+      font-weight: 400;
+      color: #F6F3EC;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
     }
 
     .body-text {
-      font-size: 15px;
-      color: #C490A0;
-      line-height: 1.65;
-      margin-bottom: 8px;
+      font-size: 1rem;
+      color: rgba(246,243,236,0.85);
+      line-height: 1.7;
+      margin-bottom: 10px;
+      font-weight: 300;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.5);
     }
 
     .name-highlight {
-      color: #F5CEAA;
-      font-weight: 600;
+      color: #EDD9A3;
+      font-weight: 500;
     }
 
     .divider {
+      width: 48px;
       height: 1px;
-      background: linear-gradient(to right, transparent, rgba(140,24,72,0.5), transparent);
-      margin: 28px 0;
+      background: rgba(246,243,236,0.3);
+      margin: 28px auto;
     }
 
+    /* Buttons */
     .cta-btn {
       display: inline-block;
-      background: linear-gradient(135deg, #F5CEAA 0%, #E8A87C 50%, #C07840 100%);
-      color: #0E0B1F;
+      background: rgba(246,243,236,0.96);
+      color: #211E17;
       text-decoration: none;
-      font-weight: 700;
-      font-size: 15px;
+      font-weight: 500;
+      font-size: 0.95rem;
       padding: 16px 40px;
       border-radius: 50px;
-      letter-spacing: 0.2px;
-      transition: opacity 0.2s;
+      letter-spacing: 0.01em;
+      transition: opacity 0.2s, transform 0.15s;
       cursor: pointer;
       border: none;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
     }
-    .cta-btn:hover { opacity: 0.88; }
+    .cta-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
     .ghost-btn {
       display: inline-block;
       background: transparent;
-      color: #D4789A;
+      color: rgba(246,243,236,0.8);
       text-decoration: none;
-      font-weight: 600;
-      font-size: 14px;
-      padding: 13px 36px;
+      font-weight: 400;
+      font-size: 0.9rem;
+      padding: 14px 36px;
       border-radius: 50px;
-      letter-spacing: 0.2px;
-      border: 1px solid rgba(140,24,72,0.5);
+      border: 1px solid rgba(246,243,236,0.35);
       transition: opacity 0.2s;
       cursor: pointer;
       margin-top: 12px;
@@ -174,136 +241,165 @@
     .ghost-btn:hover { opacity: 0.75; }
 
     .privacy-note {
-      font-size: 12px;
-      color: rgba(180,100,130,0.6);
-      margin-top: 16px;
+      font-size: 0.78rem;
+      color: rgba(246,243,236,0.45);
+      margin-top: 18px;
       line-height: 1.5;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
 
-    .footer {
-      margin-top: 32px;
-      font-size: 12px;
-      color: rgba(100,60,80,0.8);
+    .error-detail {
+      font-size: 0.8rem;
+      color: rgba(255,180,160,0.7);
+      margin-top: 10px;
     }
-    .footer a {
-      color: #D4789A;
+
+    .footer-link {
+      display: block;
+      margin-top: 36px;
+      font-size: 0.75rem;
+      color: rgba(246,243,236,0.35);
       text-decoration: none;
+      letter-spacing: 0.05em;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
+    .footer-link:hover { color: rgba(246,243,236,0.6); }
   </style>
 </head>
 <body>
 
-  <div class="orb orb1"></div>
-  <div class="orb orb2"></div>
-  <div class="orb orb3"></div>
+  <div class="scene">
 
-  <div class="card">
+    <!-- Sky phases -->
+    <div class="sky sky-1"></div>
+    <div class="sky sky-2"></div>
+    <div class="sky sky-3"></div>
+    <div class="sky sky-4"></div>
+    <div class="sky sky-5"></div>
+    <div class="sky sky-6"></div>
 
-    <!-- Brand header -->
-    <div class="logo-wrap">
-      <div class="logo-ring">♡</div>
-      <div class="brand-name">Solace Life</div>
-      <div class="brand-sub">Preserving what matters most</div>
-    </div>
+    <!-- Sun glow -->
+    <div class="sun-glow"></div>
 
-    <!-- Loading state -->
-    <div id="state-loading" class="state active">
-      <div class="spinner-wrap">
+    <!-- Overlay (darkens scene, z-index 1) -->
+    <div class="overlay"></div>
+
+    <!-- Grass (z-index 2 — above overlay) -->
+    <div class="grass-wrap" id="grass"></div>
+
+    <!-- Content (z-index 3) -->
+    <div class="content">
+
+      <div class="logo">Solace Life</div>
+      <div class="logo-sub">Preserving what matters most</div>
+
+      <!-- Loading -->
+      <div id="state-loading" class="state active">
         <div class="spinner"></div>
         <p class="spinner-text" id="loading-text">One moment…</p>
       </div>
+
+      <!-- Accept success -->
+      <div id="state-accept" class="state">
+        <span class="icon-big">💌</span>
+        <h1>You're all set</h1>
+        <p class="body-text">
+          Thank you, <span class="name-highlight" id="accept-name"></span>.
+        </p>
+        <p class="body-text">
+          When <span class="name-highlight" id="accept-sender"></span> has a moment for you,
+          it'll arrive right here by email — no app or account needed.
+        </p>
+        <div class="divider"></div>
+        <p class="body-text" style="margin-bottom: 24px;">
+          Want to keep all your moments in one place?
+        </p>
+        <a href="https://solacelife.ca" class="cta-btn">Download Solace Life — Free →</a>
+        <a href="https://solacelife.ca" class="footer-link">solacelife.ca</a>
+      </div>
+
+      <!-- Decline success -->
+      <div id="state-decline" class="state">
+        <span class="icon-big">🕊️</span>
+        <h1>Preference saved</h1>
+        <p class="body-text">
+          That's completely okay. If you ever feel differently,
+          <span class="name-highlight" id="decline-sender"></span> can always reach out again.
+        </p>
+        <p class="privacy-note">Your decision is private — the sender will not be notified.</p>
+        <div class="divider"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
+      </div>
+
+      <!-- Already confirmed -->
+      <div id="state-already-accept" class="state">
+        <span class="icon-big">💚</span>
+        <h1>Already confirmed</h1>
+        <p class="body-text">
+          You're all set, <span class="name-highlight" id="already-accept-name"></span>.
+          Moments will arrive by email when they're ready for you.
+        </p>
+        <div class="divider"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Open Solace Life →</a>
+      </div>
+
+      <!-- Already declined -->
+      <div id="state-already-decline" class="state">
+        <span class="icon-big">✓</span>
+        <h1>Already saved</h1>
+        <p class="body-text">Your preference is already on file — nothing has changed.</p>
+        <p class="privacy-note">If you ever feel differently, reach out to the person who invited you.</p>
+        <div class="divider"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
+      </div>
+
+      <!-- Error -->
+      <div id="state-error" class="state">
+        <span class="icon-big">🔗</span>
+        <h1>Link not found</h1>
+        <p class="body-text">
+          This link may have already been used, or it may have expired.
+        </p>
+        <p class="body-text">
+          If you believe this is a mistake, ask the person who invited you to resend the invite.
+        </p>
+        <p class="error-detail" id="error-detail"></p>
+        <div class="divider"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
+      </div>
+
     </div>
-
-    <!-- Accept success state -->
-    <div id="state-accept" class="state">
-      <div class="icon-big">💌</div>
-      <h1>You're all set!</h1>
-      <p class="body-text">
-        Thank you, <span class="name-highlight" id="accept-name"></span>.
-      </p>
-      <p class="body-text">
-        When <span class="name-highlight" id="accept-sender"></span> has a message for you,
-        it'll arrive right here by email — no app or account needed.
-      </p>
-
-      <div class="divider"></div>
-
-      <p class="body-text" style="margin-bottom:20px;">
-        Want to keep all your messages in one place?
-      </p>
-      <a href="https://solacelife.ca" class="cta-btn">Download Solace Life — Free ›</a>
-
-      <p class="footer" style="margin-top:28px;">
-        <a href="https://solacelife.ca">solacelife.ca</a>
-      </p>
-    </div>
-
-    <!-- Decline success state -->
-    <div id="state-decline" class="state">
-      <div class="icon-big">🕊️</div>
-      <h1>Preference saved</h1>
-      <p class="body-text">
-        That's completely okay. If you ever feel differently,
-        <span class="name-highlight" id="decline-sender"></span> can always reach out again.
-      </p>
-      <p class="privacy-note">
-        Your decision is private — the sender will not be notified.
-      </p>
-
-      <div class="divider"></div>
-
-      <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life ›</a>
-    </div>
-
-    <!-- Already confirmed / already declined states (idempotent) -->
-    <div id="state-already-accept" class="state">
-      <div class="icon-big">💚</div>
-      <h1>Already confirmed</h1>
-      <p class="body-text">
-        You're all set, <span class="name-highlight" id="already-accept-name"></span>.
-        Messages will arrive by email when they're ready for you.
-      </p>
-
-      <div class="divider"></div>
-
-      <a href="https://solacelife.ca" class="cta-btn">Open Solace Life ›</a>
-    </div>
-
-    <div id="state-already-decline" class="state">
-      <div class="icon-big">✓</div>
-      <h1>Already saved</h1>
-      <p class="body-text">
-        Your preference is already on file — nothing has changed.
-      </p>
-      <p class="privacy-note">
-        If you ever feel differently, reach out to the person who invited you.
-      </p>
-
-      <div class="divider"></div>
-
-      <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life ›</a>
-    </div>
-
-    <!-- Error state -->
-    <div id="state-error" class="state">
-      <div class="icon-big">🔗</div>
-      <h1>Link not found</h1>
-      <p class="body-text">
-        This link may have already been used, or it may have expired.
-      </p>
-      <p class="body-text">
-        If you believe this is a mistake, ask the person who invited you to resend the invite.
-      </p>
-      <p id="error-detail" style="font-size:13px;color:rgba(255,138,138,0.7);margin-top:8px;"></p>
-
-      <div class="divider"></div>
-
-      <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life ›</a>
-    </div>
-
   </div>
 
   <script>
+    /* ── Grass generation ───────────────────────────────────────── */
+    (function () {
+      const wrap   = document.getElementById('grass')
+      const colors = ['#8B7A30','#A09040','#C4B060','#6B5E28','#D4C070','#7A6A34','#B0A050','#504820']
+      const count  = 120
+      for (let i = 0; i < count; i++) {
+        const b   = document.createElement('div')
+        b.className = 'blade'
+        const h   = 30 + Math.random() * 80
+        const lf  = (-3 - Math.random() * 6).toFixed(1)
+        const lt  = ( 3 + Math.random() * 6).toFixed(1)
+        const dur = (1.6 + Math.random() * 2.4).toFixed(2)
+        const del = (Math.random() * 2.5).toFixed(2)
+        const col = colors[Math.floor(Math.random() * colors.length)]
+        b.style.cssText = [
+          `left:${((i / count) * 100 + (Math.random() - 0.5) * 1.5).toFixed(2)}%`,
+          `height:${h}px`,
+          `background:${col}`,
+          `--lean-from:${lf}deg`,
+          `--lean-to:${lt}deg`,
+          `animation-duration:${dur}s`,
+          `animation-delay:-${del}s`,
+        ].join(';')
+        wrap.appendChild(b)
+      }
+    })()
+
+    /* ── Confirmation logic ─────────────────────────────────────── */
     const CONFIRM_EDGE_URL  = 'https://yfthwahxahjabfbuntys.supabase.co/functions/v1/confirm-family-email'
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdGh3YWh4YWhqYWJmYnVudHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MTE4MzAsImV4cCI6MjA5NDE4NzgzMH0.VfnjNTjE7RRux6s4-3icNLQoyhTl_mGYrW3Zlz9e_kE'
 
@@ -315,9 +411,8 @@
     async function run() {
       const params = new URLSearchParams(window.location.search)
       const token  = params.get('token')
-      const action = params.get('action') || 'accept'   // default: accept (backward compat)
+      const action = params.get('action') || 'accept'
 
-      // Show contextual loading text
       const loadingEl = document.getElementById('loading-text')
       if (loadingEl) {
         loadingEl.textContent = action === 'decline'
@@ -357,7 +452,6 @@
           return
         }
 
-        // Accept path
         if (data.already_confirmed) {
           document.getElementById('already-accept-name').textContent = recipientName
           showState('state-already-accept')
