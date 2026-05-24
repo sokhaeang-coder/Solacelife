@@ -227,12 +227,8 @@ export default function FamilyScreen() {
   const [showSuggestions, setShowSuggestions]           = useState(true)
   const [pendingSeed, setPendingSeed]                   = useState<Record<string, string>>({})
 
-  // ── Native contact picker ──────────────────────────────────────────────────
-  const [showContactPicker, setShowContactPicker]   = useState(false)
+  // ── Medical ID guide ──────────────────────────────────────────────────────
   const [showMedicalIdGuide, setShowMedicalIdGuide] = useState(false)
-  const [contactSearch, setContactSearch]           = useState('')
-  const [allContacts, setAllContacts]               = useState<Contacts.Contact[]>([])
-  const [loadingContacts, setLoadingContacts]       = useState(false)
 
   // ── Date picker state ──────────────────────────────────────────────────────
   const [showDobPicker, setShowDobPicker]     = useState(false)
@@ -765,12 +761,12 @@ export default function FamilyScreen() {
   // Fix: close the Add/Edit modal first, request permission in clean air,
   // then show the contact picker. The modal re-opens when a contact is selected.
   async function openContactPicker() {
-    // Step 1 — close the form modal so the permission dialog can appear
+    // Use the native iOS/Android contact picker — no custom list needed.
+    // presentContactPickerAsync() opens the system Contacts UI and returns
+    // the selected contact directly. Requires contacts permission first.
     setShowModal(false)
-    // Wait for the modal dismiss animation to finish
     await new Promise(resolve => setTimeout(resolve, 350))
 
-    // Step 2 — check / request permission
     try {
       const { status: existing } = await Contacts.getPermissionsAsync()
 
@@ -797,38 +793,19 @@ export default function FamilyScreen() {
           return
         }
       }
+
+      // Open the native system contact picker
+      const contact = await Contacts.presentContactPickerAsync()
+      if (contact) {
+        selectContact(contact)
+      } else {
+        // User cancelled — re-open the form
+        setShowModal(true)
+      }
     } catch (e) {
-      console.warn('Contacts permission error:', e)
-      Alert.alert('Error', 'Could not access contacts. Please try again.',
+      console.warn('openContactPicker error:', e)
+      Alert.alert('Error', 'Could not open contacts. Please try again.',
         [{ text: 'OK', onPress: () => setShowModal(true) }])
-      return
-    }
-
-    // Step 3 — permission confirmed, load contacts and show picker
-    setContactSearch('')
-    setAllContacts([])
-    setLoadingContacts(true)
-    setShowContactPicker(true)
-
-    try {
-      const { data } = await Contacts.getContactsAsync({
-        fields: [
-          Contacts.Fields.Name,
-          Contacts.Fields.FirstName,
-          Contacts.Fields.LastName,
-          Contacts.Fields.Emails,
-          Contacts.Fields.PhoneNumbers,
-        ],
-        sort: Contacts.SortTypes.FirstName,
-      })
-      setAllContacts(data.filter(c => !!(c.name || c.firstName || c.lastName)))
-    } catch (e) {
-      console.warn('openContactPicker load error:', e)
-      setShowContactPicker(false)
-      setShowModal(true)
-      Alert.alert('Error', 'Failed to load contacts. Please try again.')
-    } finally {
-      setLoadingContacts(false)
     }
   }
 
@@ -859,10 +836,8 @@ export default function FamilyScreen() {
       email: email    || f.email,
       phone: phone    || f.phone,
     }))
-    setShowContactPicker(false)
     // Reopen the Add/Edit modal with the pre-filled contact data
     setShowModal(true)
-    setAllContacts([])
   }
 
   function resetForm() {
@@ -875,8 +850,6 @@ export default function FamilyScreen() {
     setHasAnniv(false); setAnnivDate(defaultAnniv())
     setShowAnnivPicker(false)
     setSaveMsg('')
-    setAllContacts([])
-    setContactSearch('')
   }
 
   // ── Resend invite email (for unconfirmed members) ─────────────────────────
@@ -1986,138 +1959,6 @@ export default function FamilyScreen() {
           </View>
         </Modal>
       )}
-
-      {/* ── Contact Picker — full screen so keyboard doesn't hide contacts ── */}
-      <Modal
-        visible={showContactPicker}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => { setShowContactPicker(false); setAllContacts([]) }}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={{ flex: 1, paddingTop: 56 }}>
-
-              {/* Header */}
-              <View style={[s.modalHeader, { paddingHorizontal: 20 }]}>
-                <Text style={[s.modalTitle, { color: '#3D1020' }]}>Choose a Contact</Text>
-                <TouchableOpacity
-                  onPress={() => { setShowContactPicker(false); setAllContacts([]) }}
-                  style={{ padding: 4 }}>
-                  <View style={s.modalCloseBtn}><Text style={s.modalCloseX}>✕</Text></View>
-                </TouchableOpacity>
-              </View>
-
-              {loadingContacts ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <ActivityIndicator color="#F06292" size="large" />
-                  <Text style={{ color: '#7A3448', fontSize: 14, marginTop: 12 }}>
-                    Loading contacts…
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  {/* Search bar */}
-                  <View style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 10,
-                    backgroundColor: 'rgba(61,16,32,0.08)', borderRadius: 12,
-                    borderWidth: 1, borderColor: 'rgba(61,16,32,0.2)',
-                    paddingHorizontal: 12, marginBottom: 16, marginHorizontal: 20,
-                  }}>
-                    <Text style={{ fontSize: 16 }}>🔍</Text>
-                    <TextInput
-                      style={{ flex: 1, color: '#3D1020', fontSize: 15, paddingVertical: 11 }}
-                      placeholder="Search contacts…"
-                      placeholderTextColor="rgba(61,16,32,0.35)"
-                      value={contactSearch}
-                      onChangeText={setContactSearch}
-                      autoFocus
-                      returnKeyType="search"
-                    />
-                    {contactSearch.length > 0 && (
-                      <TouchableOpacity onPress={() => setContactSearch('')}>
-                        <Text style={{ color: '#7A3448', fontSize: 16 }}>✕</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* Contact list */}
-                  {allContacts.length === 0 ? (
-                    <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-                      <Text style={{ fontSize: 40, marginBottom: 12 }}>📭</Text>
-                      <Text style={{ color: '#3D1020', fontSize: 15, fontWeight: '600', marginBottom: 6 }}>
-                        No contacts found
-                      </Text>
-                      <Text style={{ color: '#7A3448', fontSize: 13, textAlign: 'center', maxWidth: 260, lineHeight: 20 }}>
-                        Make sure Solace Life has permission to access your contacts in Settings.
-                      </Text>
-                    </View>
-                  ) : (
-                    <FlatList
-                      data={allContacts.filter(c => {
-                        if (!contactSearch.trim()) return true
-                        const name = (c.name || [c.firstName, c.lastName].filter(Boolean).join(' ')).toLowerCase()
-                        return name.includes(contactSearch.toLowerCase())
-                      })}
-                      keyExtractor={item => item.id ?? (item.name || '') + Math.random()}
-                      keyboardShouldPersistTaps="handled"
-                      showsVerticalScrollIndicator={true}
-                      style={{ flex: 1 }}
-                      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-                      ItemSeparatorComponent={() => (
-                        <View style={{ height: 1, backgroundColor: 'rgba(61,16,32,0.15)', marginHorizontal: 4 }} />
-                      )}
-                      renderItem={({ item }) => {
-                        const displayName = item.name
-                          || [item.firstName, item.lastName].filter(Boolean).join(' ')
-                        const email = item.emails?.[0]?.email
-                        const phone = item.phoneNumbers?.[0]?.number
-                        const initials = displayName
-                          .split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()
-                        const bgColor = avatarColor(displayName)
-
-                        return (
-                          <TouchableOpacity
-                            onPress={() => selectContact(item)}
-                            activeOpacity={0.75}
-                            style={{
-                              flexDirection: 'row', alignItems: 'center',
-                              gap: 14, paddingVertical: 12, paddingHorizontal: 4,
-                            }}>
-                            {/* Initials avatar */}
-                            <View style={{
-                              width: 44, height: 44, borderRadius: 22,
-                              backgroundColor: bgColor + '33',
-                              borderWidth: 1.5, borderColor: bgColor + '88',
-                              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                            }}>
-                              <Text style={{ color: bgColor, fontSize: 16, fontWeight: '700' }}>
-                                {initials || '?'}
-                              </Text>
-                            </View>
-                            {/* Name + details */}
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ color: '#3D1020', fontSize: 15, fontWeight: '600', marginBottom: 2 }}
-                                numberOfLines={1}>
-                                {displayName}
-                              </Text>
-                              {(email || phone) && (
-                                <Text style={{ color: '#7A3448', fontSize: 12 }} numberOfLines={1}>
-                                  {[phone, email].filter(Boolean).join('  ·  ')}
-                                </Text>
-                              )}
-                            </View>
-                            <Text style={{ color: '#7A3448', fontSize: 18 }}>›</Text>
-                          </TouchableOpacity>
-                        )
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </LinearGradient>
-          </KeyboardAvoidingView>
-      </Modal>
 
       {/* ── Occasion Suggestion Modal ───────────────────────────────────────── */}
       <Modal
