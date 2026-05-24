@@ -202,6 +202,7 @@ export default function FamilyScreen() {
     senderEmail:       string | null
   } | null>(null)
 
+  const [viewingMember, setViewingMember] = useState<any | null>(null)
   const [showModal, setShowModal]     = useState(false)
   const [form, setForm]               = useState({
     name: '', email: '', phone: '', relationship: '', relationship_label: '', trusted: false,
@@ -1231,69 +1232,52 @@ export default function FamilyScreen() {
                   <Text style={s.sectionTitle}>Trusted Contact{trustedMembers.length > 1 ? 's' : ''}</Text>
                 </View>
                 {trustedMembers.map((tm) => (
-                  <View key={tm.id} style={[s.listRow, s.trustedRow,
-                    { padding: 0, overflow: 'hidden', alignItems: 'stretch', minHeight: 180 }]}>
-                    <MemberAvatar
-                      member={tm}
-                      photoUrl={memberPhotoUrls[tm.id]}
-                      fillHeight
-                      onPress={() => handleChangePhoto(tm)}
-                    />
-                    {/* Right side: info top, action bar bottom */}
-                    <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'space-between', padding: 14 }}>
-                      <View>
-                        <Text style={s.listLabel}>{tm.name}</Text>
-                        {tm.relationship_label ? (
-                          <Text style={[s.listDesc, { color: C.amberLight, fontWeight: '600' }]}>{tm.relationship_label}</Text>
-                        ) : null}
-                        <Text style={s.listDesc}>{tm.email} · {tm.relationship}</Text>
-                        {tm.phone ? <Text style={s.listDesc}>📞 {tm.phone}</Text> : null}
-                        {tm.date_of_birth ? <Text style={s.listDesc}>🎂 {tm.date_of_birth}</Text> : null}
-                        {tm.anniversary ? <Text style={s.listDesc}>💍 {tm.anniversary}</Text> : null}
-                        <Text style={s.trustedBadge}>★ Trusted Contact</Text>
-                        {sendingBackIds.has(tm.id) ? (
-                          <View style={{ alignSelf: 'flex-start', marginTop: 6,
-                            backgroundColor: 'rgba(240,98,146,0.12)', borderRadius: 20,
-                            borderWidth: 1, borderColor: 'rgba(240,98,146,0.3)',
-                            paddingHorizontal: 10, paddingVertical: 4 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: C.accent }}>
-                              💜 Preserving moments for you
-                            </Text>
-                          </View>
-                        ) : null}
-                        {tm.is_emergency_contact ? (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                            <View style={{ backgroundColor: '#0A84FF14', borderRadius: 8, borderWidth: 1,
-                              borderColor: '#0A84FF44', paddingHorizontal: 8, paddingVertical: 3 }}>
-                              <Text style={{ color: '#0A84FF', fontSize: 11, fontWeight: '700' }}>
-                                📱 Phone Emergency #{tm.emergency_priority}
+                  <TouchableOpacity key={tm.id} activeOpacity={0.82}
+                    onPress={() => setViewingMember(tm)}
+                    accessibilityLabel={`View ${tm.name}`} accessibilityRole="button">
+                    <View style={[s.listRow, s.trustedRow,
+                      { padding: 0, overflow: 'hidden', alignItems: 'stretch', minHeight: 210 }]}>
+                      <MemberAvatar
+                        member={tm}
+                        photoUrl={memberPhotoUrls[tm.id]}
+                        fillHeight
+                        onPress={() => setViewingMember(tm)}
+                      />
+                      {/* Right side — name, phone, badges only */}
+                      <View style={{ flex: 1, padding: 16, justifyContent: 'center', gap: 8 }}>
+                        <Text style={[s.listLabel, { fontSize: 20 }]}>{tm.name}</Text>
+                        {tm.phone ? (
+                          <Text style={[s.listDesc, { fontSize: 16 }]}>📞 {tm.phone}</Text>
+                        ) : (
+                          <Text style={[s.listDesc, { fontSize: 14, opacity: 0.5 }]}>No phone added</Text>
+                        )}
+                        <View style={{ gap: 5, marginTop: 2 }}>
+                          <Text style={[s.trustedBadge, { fontSize: 13 }]}>★ Trusted Contact</Text>
+                          {sendingBackIds.has(tm.id) ? (
+                            <View style={{ alignSelf: 'flex-start',
+                              backgroundColor: 'rgba(240,98,146,0.12)', borderRadius: 20,
+                              borderWidth: 1, borderColor: 'rgba(240,98,146,0.3)',
+                              paddingHorizontal: 10, paddingVertical: 4 }}>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: C.accent }}>
+                                💜 Preserving moments
                               </Text>
                             </View>
-                          </View>
-                        ) : null}
-                        {!tm.email_confirmed ? (
-                          <Text style={{ color: C.offWhite, fontSize: 12, fontWeight: '700', marginTop: 4 }}>⚠️ Email not confirmed</Text>
-                        ) : null}
-                      </View>
-                      {/* Action bar */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 10, gap: 4 }}>
-                        {!tm.email_confirmed ? (
-                          <TouchableOpacity onPress={() => handleResendInvite(tm)} disabled={resendingId === tm.id}
-                            style={s.deleteBtn} accessibilityLabel="Resend invite" accessibilityRole="button">
-                            <Text style={s.deleteBtnIcon}>{resendingId === tm.id ? '⏳' : '📨'}</Text>
-                          </TouchableOpacity>
-                        ) : null}
-                        <TouchableOpacity onPress={() => handleEditMember(tm)} style={s.editBtn}
-                          accessibilityLabel="Edit member" accessibilityRole="button">
-                          <Text style={s.editBtnIcon}>✏️</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => { setDeleteConfirmText(''); setConfirmDelete(tm) }} style={s.deleteBtn}
-                          accessibilityLabel="Delete member" accessibilityRole="button">
-                          <Text style={s.deleteBtnIcon}>🗑️</Text>
-                        </TouchableOpacity>
+                          ) : null}
+                          {tm.is_emergency_contact ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: '#0A84FF14', borderRadius: 8,
+                              borderWidth: 1, borderColor: '#0A84FF44', paddingHorizontal: 8, paddingVertical: 4 }}>
+                              <Text style={{ color: '#0A84FF', fontSize: 13, fontWeight: '700' }}>
+                                📱 Emergency #{tm.emergency_priority}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {!tm.email_confirmed ? (
+                            <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '700' }}>⚠️ Not confirmed</Text>
+                          ) : null}
+                        </View>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </>
             ) : null}
@@ -1304,69 +1288,51 @@ export default function FamilyScreen() {
                   <Text style={s.sectionTitle}>Family Members</Text>
                 </View>
                 {regularMembers.map((m) => (
-                  <View key={m.id} style={[s.listRow,
-                    { padding: 0, overflow: 'hidden', alignItems: 'stretch', minHeight: 180 }]}>
-                    {/* Full-height photo strip — fills entire left side of card */}
-                    <MemberAvatar
-                      member={m}
-                      photoUrl={memberPhotoUrls[m.id]}
-                      fillHeight
-                      onPress={() => handleChangePhoto(m)}
-                    />
-                    {/* Right side: info top, action bar bottom */}
-                    <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'space-between', padding: 14 }}>
-                      <View>
-                        <Text style={s.listLabel}>{m.name}</Text>
-                        {m.relationship_label ? (
-                          <Text style={[s.listDesc, { color: C.amberLight, fontWeight: '600' }]}>{m.relationship_label}</Text>
-                        ) : null}
-                        <Text style={s.listDesc}>{m.email} · {m.relationship}</Text>
-                        {m.phone ? <Text style={s.listDesc}>📞 {m.phone}</Text> : null}
-                        {m.date_of_birth ? <Text style={s.listDesc}>🎂 {m.date_of_birth}</Text> : null}
-                        {m.anniversary ? <Text style={s.listDesc}>💍 {m.anniversary}</Text> : null}
-                        {sendingBackIds.has(m.id) ? (
-                          <View style={{ alignSelf: 'flex-start', marginTop: 6,
-                            backgroundColor: 'rgba(240,98,146,0.12)', borderRadius: 20,
-                            borderWidth: 1, borderColor: 'rgba(240,98,146,0.3)',
-                            paddingHorizontal: 10, paddingVertical: 4 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: C.accent }}>
-                              💜 Preserving moments for you
-                            </Text>
-                          </View>
-                        ) : null}
-                        {m.is_emergency_contact ? (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                            <View style={{ backgroundColor: '#0A84FF14', borderRadius: 8, borderWidth: 1,
-                              borderColor: '#0A84FF44', paddingHorizontal: 8, paddingVertical: 3 }}>
-                              <Text style={{ color: '#0A84FF', fontSize: 11, fontWeight: '700' }}>
-                                📱 Phone Emergency #{m.emergency_priority}
+                  <TouchableOpacity key={m.id} activeOpacity={0.82}
+                    onPress={() => setViewingMember(m)}
+                    accessibilityLabel={`View ${m.name}`} accessibilityRole="button">
+                    <View style={[s.listRow,
+                      { padding: 0, overflow: 'hidden', alignItems: 'stretch', minHeight: 210 }]}>
+                      <MemberAvatar
+                        member={m}
+                        photoUrl={memberPhotoUrls[m.id]}
+                        fillHeight
+                        onPress={() => setViewingMember(m)}
+                      />
+                      {/* Right side — name, phone, badges only */}
+                      <View style={{ flex: 1, padding: 16, justifyContent: 'center', gap: 8 }}>
+                        <Text style={[s.listLabel, { fontSize: 20 }]}>{m.name}</Text>
+                        {m.phone ? (
+                          <Text style={[s.listDesc, { fontSize: 16 }]}>📞 {m.phone}</Text>
+                        ) : (
+                          <Text style={[s.listDesc, { fontSize: 14, opacity: 0.5 }]}>No phone added</Text>
+                        )}
+                        <View style={{ gap: 5, marginTop: 2 }}>
+                          {sendingBackIds.has(m.id) ? (
+                            <View style={{ alignSelf: 'flex-start',
+                              backgroundColor: 'rgba(240,98,146,0.12)', borderRadius: 20,
+                              borderWidth: 1, borderColor: 'rgba(240,98,146,0.3)',
+                              paddingHorizontal: 10, paddingVertical: 4 }}>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: C.accent }}>
+                                💜 Preserving moments
                               </Text>
                             </View>
-                          </View>
-                        ) : null}
-                        {!m.email_confirmed ? (
-                          <Text style={{ color: C.offWhite, fontSize: 12, fontWeight: '700', marginTop: 4 }}>⚠️ Email not confirmed</Text>
-                        ) : null}
-                      </View>
-                      {/* Action bar */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 10, gap: 4 }}>
-                        {!m.email_confirmed ? (
-                          <TouchableOpacity onPress={() => handleResendInvite(m)} disabled={resendingId === m.id}
-                            style={s.deleteBtn} accessibilityLabel="Resend invite" accessibilityRole="button">
-                            <Text style={s.deleteBtnIcon}>{resendingId === m.id ? '⏳' : '📨'}</Text>
-                          </TouchableOpacity>
-                        ) : null}
-                        <TouchableOpacity onPress={() => handleEditMember(m)} style={s.editBtn}
-                          accessibilityLabel="Edit member" accessibilityRole="button">
-                          <Text style={s.editBtnIcon}>✏️</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => { setDeleteConfirmText(''); setConfirmDelete(m) }} style={s.deleteBtn}
-                          accessibilityLabel="Delete member" accessibilityRole="button">
-                          <Text style={s.deleteBtnIcon}>🗑️</Text>
-                        </TouchableOpacity>
+                          ) : null}
+                          {m.is_emergency_contact ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: '#0A84FF14', borderRadius: 8,
+                              borderWidth: 1, borderColor: '#0A84FF44', paddingHorizontal: 8, paddingVertical: 4 }}>
+                              <Text style={{ color: '#0A84FF', fontSize: 13, fontWeight: '700' }}>
+                                📱 Emergency #{m.emergency_priority}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {!m.email_confirmed ? (
+                            <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '700' }}>⚠️ Not confirmed</Text>
+                          ) : null}
+                        </View>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </>
             ) : null}
@@ -1376,7 +1342,163 @@ export default function FamilyScreen() {
         )}
       </ScrollView>
 
-      {/* ── Add Family Member Modal ─────────────────────────────────────────── */}
+      {/* ── Member Detail — read-only view modal ───────────────────────────── */}
+      <Modal visible={!!viewingMember} transparent animationType="slide"
+        onRequestClose={() => setViewingMember(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <LinearGradient colors={WARM} style={[s.modalInner, { maxHeight: '90%' }]}>
+              <View style={s.modalHandle} />
+              {/* Header */}
+              <View style={s.modalHeader}>
+                <Text style={[s.modalTitle, { color: WM.title }]}>Profile</Text>
+                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  <TouchableOpacity
+                    onPress={() => { setViewingMember(null); handleEditMember(viewingMember) }}
+                    accessibilityLabel="Edit member" accessibilityRole="button">
+                    <View style={[s.modalCloseBtn, {
+                      backgroundColor: WM.accent, paddingHorizontal: 14,
+                      width: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6,
+                    }]}>
+                      <Text style={{ fontSize: 15 }}>✏️</Text>
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Edit</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setViewingMember(null)}>
+                    <View style={s.modalCloseBtn}><Text style={s.modalCloseX}>✕</Text></View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {viewingMember ? (() => {
+                  const vm = viewingMember
+                  const photoUrl = memberPhotoUrls[vm.id] || null
+                  const initials = vm.name?.charAt(0).toUpperCase() ?? '?'
+                  const color = avatarColor(vm.name)
+                  return (
+                    <>
+                      {/* Large photo */}
+                      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                        {photoUrl ? (
+                          <Image source={{ uri: photoUrl }}
+                            style={{ width: 160, height: 160, borderRadius: 80,
+                              borderWidth: 3, borderColor: color + '88' }}
+                            resizeMode="cover" />
+                        ) : (
+                          <View style={{ width: 160, height: 160, borderRadius: 80,
+                            backgroundColor: color + '33', borderWidth: 3, borderColor: color + '88',
+                            alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 64, fontWeight: '800', color }}>
+                              {initials}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Name + relationship */}
+                      <Text style={{ fontSize: 26, fontWeight: '700', color: WM.title, textAlign: 'center', marginBottom: 4 }}>
+                        {vm.name}
+                      </Text>
+                      {vm.relationship_label ? (
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: C.amberLight, textAlign: 'center', marginBottom: 16 }}>
+                          {vm.relationship_label}
+                        </Text>
+                      ) : vm.relationship ? (
+                        <Text style={{ fontSize: 15, color: WM.sub, textAlign: 'center', marginBottom: 16 }}>
+                          {vm.relationship}
+                        </Text>
+                      ) : <View style={{ marginBottom: 16 }} />}
+
+                      {/* Detail rows */}
+                      <View style={{ backgroundColor: WM.cardBg, borderRadius: 14, borderWidth: 1,
+                        borderColor: WM.border, padding: 16, gap: 14, marginBottom: 16 }}>
+                        {vm.email ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 20 }}>✉️</Text>
+                            <Text style={{ fontSize: 16, color: WM.title, flex: 1 }}>{vm.email}</Text>
+                          </View>
+                        ) : null}
+                        {vm.phone ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 20 }}>📞</Text>
+                            <Text style={{ fontSize: 16, color: WM.title, flex: 1 }}>{vm.phone}</Text>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 20 }}>📞</Text>
+                            <Text style={{ fontSize: 15, color: WM.sub, flex: 1 }}>No phone number added</Text>
+                          </View>
+                        )}
+                        {vm.date_of_birth ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 20 }}>🎂</Text>
+                            <Text style={{ fontSize: 16, color: WM.title, flex: 1 }}>{vm.date_of_birth}</Text>
+                          </View>
+                        ) : null}
+                        {vm.anniversary ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 20 }}>💍</Text>
+                            <Text style={{ fontSize: 16, color: WM.title, flex: 1 }}>{vm.anniversary}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {/* Badges */}
+                      <View style={{ gap: 10, marginBottom: 8 }}>
+                        {vm.is_trusted_contact ? (
+                          <View style={{ backgroundColor: WM.cardBg, borderRadius: 12, borderWidth: 1,
+                            borderColor: WM.border, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 22 }}>🔒</Text>
+                            <View>
+                              <Text style={{ fontSize: 15, fontWeight: '700', color: WM.title }}>Trusted Contact</Text>
+                              <Text style={{ fontSize: 13, color: WM.sub }}>Can unlock your vault</Text>
+                            </View>
+                          </View>
+                        ) : null}
+                        {vm.is_emergency_contact ? (
+                          <View style={{ backgroundColor: '#0A84FF14', borderRadius: 12, borderWidth: 1,
+                            borderColor: '#0A84FF44', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 22 }}>📱</Text>
+                            <View>
+                              <Text style={{ fontSize: 15, fontWeight: '700', color: '#0A84FF' }}>Emergency Contact #{vm.emergency_priority}</Text>
+                              <Text style={{ fontSize: 13, color: WM.sub }}>Phone emergency list</Text>
+                            </View>
+                          </View>
+                        ) : null}
+                        {sendingBackIds.has(vm.id) ? (
+                          <View style={{ backgroundColor: 'rgba(240,98,146,0.10)', borderRadius: 12, borderWidth: 1,
+                            borderColor: 'rgba(240,98,146,0.3)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 22 }}>💜</Text>
+                            <View>
+                              <Text style={{ fontSize: 15, fontWeight: '700', color: C.accent }}>Preserving moments for you</Text>
+                              <Text style={{ fontSize: 13, color: WM.sub }}>They're also sending you memories</Text>
+                            </View>
+                          </View>
+                        ) : null}
+                        {!vm.email_confirmed ? (
+                          <View style={{ backgroundColor: 'rgba(200,120,0,0.10)', borderRadius: 12, borderWidth: 1,
+                            borderColor: 'rgba(200,120,0,0.3)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 22 }}>⚠️</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 15, fontWeight: '700', color: WM.title }}>Invite not confirmed</Text>
+                              <TouchableOpacity onPress={() => { setViewingMember(null); handleResendInvite(vm) }}>
+                                <Text style={{ fontSize: 13, color: C.accent, fontWeight: '600' }}>Tap to resend invite →</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ) : null}
+                      </View>
+                    </>
+                  )
+                })() : null}
+              </ScrollView>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Add / Edit Family Member Modal ──────────────────────────────────── */}
       <Modal visible={showModal} transparent animationType="slide"
         onRequestClose={() => { setShowModal(false); resetForm() }}
         >
@@ -1616,6 +1738,27 @@ export default function FamilyScreen() {
                         : <Text style={[s.btnPrimaryText, { color: '#fff' }]}>{editingMember ? 'Save Changes' : 'Send Invite'}</Text>}
                     </LinearGradient>
                   </TouchableOpacity>
+
+                  {/* ── Delete — only shown when editing an existing member ── */}
+                  {editingMember ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowModal(false)
+                        setDeleteConfirmText('')
+                        setConfirmDelete(editingMember)
+                      }}
+                      activeOpacity={0.85}
+                      style={{ marginTop: 4, marginBottom: 8 }}>
+                      <View style={[s.btnPrimary, {
+                        backgroundColor: 'rgba(180,30,30,0.12)',
+                        borderWidth: 1, borderColor: 'rgba(180,30,30,0.3)',
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+                      }]}>
+                        <Text style={{ fontSize: 18 }}>🗑️</Text>
+                        <Text style={[s.btnPrimaryText, { color: '#B41E1E' }]}>Remove {editingMember.name}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : null}
 
                 </ScrollView>
               </LinearGradient>
