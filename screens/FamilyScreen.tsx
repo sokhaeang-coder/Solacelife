@@ -267,15 +267,18 @@ export default function FamilyScreen() {
 
       if (error || !myRows || myRows.length === 0) return
 
-      // Step 1b — find profile IDs G1 already has in their OWN family list.
+      // Step 1b — find profile IDs this user MANUALLY added as their own family member.
       // When G2 becomes "both" they create a row pointing at G1, which would make
-      // G2 appear twice (once as G1's own member, once in "Connected with").
-      // Exclude any sender who G1 already explicitly added as their own family member.
+      // G1 appear twice on G1's screen (once as G1's own member, once in "Connected with").
+      // Only count manually-invited rows (email IS NOT NULL) — auto-created reciprocal
+      // rows (email IS NULL) must not count, otherwise G2 running this same function
+      // would incorrectly filter out G1 from their own "Connected with" section.
       const { data: myOwnRows } = await supabase
         .from('family_members')
         .select('recipient_profile_id')
         .eq('user_id', user.id)
         .not('recipient_profile_id', 'is', null)
+        .not('email', 'is', null)
 
       const alreadyAddedByMe = new Set(
         (myOwnRows ?? []).map((r: any) => r.recipient_profile_id as string)
