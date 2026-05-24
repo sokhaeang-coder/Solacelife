@@ -1,0 +1,13 @@
+# ── Netlify deployment config for Solace Life ────────────────────
+# Publish the landing/ folder directly — no build step needed.
+# The mobile app (Expo) is distributed via EAS / app stores, not here.
+
+[build]
+  publish = "landing"
+  command = ""
+
+[[redirects]]
+  from   = "https://www.solacelife.ca/*"
+  to     = "https://solacelife.ca/:splat"
+  status = 301
+  force  = true

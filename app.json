@@ -4,16 +4,24 @@
     "slug": "Solace-Life",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "solacelife",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0E0B1F"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Solace uses your microphone to record voice messages for your loved ones.",
+        "NSCameraUsageDescription": "Solace uses your camera to record video messages for your loved ones.",
+        "NSPhotoLibraryUsageDescription": "Solace accesses your photo library so you can choose a video to save as a memory.",
+        "NSSpeechRecognitionUsageDescription": "Solace uses speech recognition so you can speak your stories and memories instead of typing."
+      },
+      "bundleIdentifier": "com.sokhaeang.Solace-Life"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +29,57 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.INTERNET"
+      ],
+      "package": "com.sokhaeang.SolaceLife"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Solace Life to access your microphone to record voice memos for your loved ones."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Solace Life to access your photos to create memory albums.",
+          "cameraPermission": "Allow Solace Life to use your camera to record video messages."
+        }
+      ],
+      "expo-video",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Solace Life to access your contacts so you can quickly add family members without typing."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2fc26943-45b2-4a45-89b7-325db2d88248"
+      }
+    },
+    "owner": "sokhaeang"
   }
 }

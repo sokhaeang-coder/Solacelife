@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>A moment for you — Solace Life</title>
+
+  <!-- Open Graph / sharing -->
+  <meta property="og:title" content="Someone sent you a moment">
+  <meta property="og:description" content="A special message has been waiting to reach you. Open it in your browser — no app required.">
+  <meta property="og:image" content="https://solacelife.ca/og-memory.jpg">
+
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Palette ────────────────────────────────────────────── */
+    :root {
+      --bg:           #0E0B1F;
+      --card:         #1A1535;
+      --card2:        #231848;
+      --border:       #2A1F4A;
+      --purple:       #7B5EA7;
+      --purple-light: #C9A8FF;
+      --text:         #EEE8F5;
+      --text-muted:   #9985BB;
+      --text-dim:     #4A3D60;
+      --gold-start:   #F5CEAA;
+      --gold-mid:     #E8A87C;
+      --gold-end:     #C07840;
+    }
+
+    /* ── Base ───────────────────────────────────────────────── */
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Sky header (matches landing page aesthetic) ────────── */
+    .sky {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sky-layer {
+      position: absolute; inset: 0;
+      opacity: 0;
+      animation: skyFade 54s infinite;
+    }
+    .sky-1 { background: linear-gradient(to bottom, #5A4890 0%, #8B68AA 28%, #C47890 52%, #A03858 70%, #3A1820 100%); animation-delay: 0s; }
+    .sky-2 { background: linear-gradient(to bottom, #4A3880 0%, #E88070 30%, #F4A050 55%, #E86030 72%, #301408 100%); animation-delay: -9s; }
+    .sky-3 { background: linear-gradient(to bottom, #203060 0%, #4878A8 30%, #78C0E0 55%, #E8D890 72%, #281808 100%); animation-delay: -18s; }
+    .sky-4 { background: linear-gradient(to bottom, #102040 0%, #1848A0 30%, #3090D0 55%, #F0C840 72%, #201008 100%); animation-delay: -27s; }
+    .sky-5 { background: linear-gradient(to bottom, #5C4898 0%, #B05080 28%, #D83C30 50%, #F08020 68%, #2A1810 100%); animation-delay: -36s; }
+    .sky-6 { background: linear-gradient(to bottom, #6A58A8 0%, #9070B0 28%, #D07890 50%, #C05868 68%, #401828 100%); animation-delay: -45s; }
+    @keyframes skyFade {
+      0%   { opacity: 0; }
+      5%   { opacity: 1; }
+      16%  { opacity: 1; }
+      22%  { opacity: 0; }
+      100% { opacity: 0; }
+    }
+
+    /* dove overlay */
+    .sky-brand {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    }
+    .sky-brand .dove  { font-size: 40px; line-height: 1; }
+    .sky-brand .brand { font-size: 22px; font-weight: 700; color: #EEE8F5; letter-spacing: -0.3px; }
+    .sky-brand .sub   { font-size: 13px; color: rgba(238,232,245,0.7); }
+
+    /* ── Page wrapper ───────────────────────────────────────── */
+    .page { max-width: 620px; margin: 0 auto; padding: 0 20px 60px; }
+
+    /* ── States ─────────────────────────────────────────────── */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    #state-loading {
+      text-align: center;
+      padding: 80px 20px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--border);
+      border-top-color: var(--purple-light);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #state-loading p { color: var(--text-muted); font-size: 15px; }
+
+    /* Error */
+    #state-error {
+      text-align: center;
+      padding: 80px 20px;
+    }
+    #state-error .icon { font-size: 52px; margin-bottom: 20px; }
+    #state-error h2 { font-size: 22px; color: var(--text); margin-bottom: 12px; }
+    #state-error p  { color: var(--text-muted); font-size: 15px; max-width: 380px; margin: 0 auto; }
+
+    /* Memory content */
+    #state-memory { padding-top: 40px; }
+
+    /* ── Memory card sections ───────────────────────────────── */
+    .section { margin-bottom: 24px; }
+
+    /* Header — from/to */
+    .memory-header {
+      background: linear-gradient(160deg, var(--card) 0%, var(--card2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 28px 24px;
+    }
+    .from-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .from-name {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--purple-light);
+      margin-bottom: 14px;
+    }
+    .greeting-line {
+      font-size: 16px;
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .greeting-line .recipient { color: var(--text); font-weight: 600; }
+    .delivery-date {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .delivery-date span { color: var(--purple); font-weight: 600; }
+
+    /* Time capsule timeline */
+    .time-capsule {
+      margin-top: 18px;
+      background: #12102A;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px 14px;
+    }
+    .time-capsule .tc-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .time-capsule .tc-row {
+      display: flex;
+      align-items: stretch;
+    }
+    .time-capsule .tc-col {
+      flex: 1;
+      text-align: center;
+      padding: 6px 10px;
+    }
+    .time-capsule .tc-col + .tc-col {
+      border-left: 1px solid var(--border);
+    }
+    .time-capsule .tc-icon { font-size: 20px; margin-bottom: 6px; }
+    .time-capsule .tc-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 4px; }
+    .time-capsule .tc-date { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.4; }
+    .time-capsule .tc-footer {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--purple-light);
+      text-align: center;
+      font-style: italic;
+      line-height: 1.55;
+    }
+
+    /* Memory type badge */
+    .memory-type-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 24px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .memory-icon { font-size: 36px; line-height: 1; flex-shrink: 0; }
+    .memory-meta {}
+    .memory-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    .memory-type-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: var(--purple);
+    }
+
+    /* ── Media players ──────────────────────────────────────── */
+
+    /* Voice / Audio */
+    .audio-player-wrap {
+      background: linear-gradient(160deg, var(--card) 0%, var(--card2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+    }
+    .audio-player-wrap p.label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    audio {
+      width: 100%;
+      border-radius: 10px;
+      outline: none;
+      filter: invert(1) hue-rotate(180deg) brightness(0.8);
+    }
+
+    /* Video */
+    .video-player-wrap {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+    }
+    video {
+      width: 100%;
+      display: block;
+      max-height: 420px;
+      object-fit: contain;
+      background: #000;
+    }
+
+    /* Photo */
+    .photo-wrap {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .photo-wrap img {
+      width: 100%;
+      display: block;
+      max-height: 480px;
+      object-fit: contain;
+      background: #000;
+    }
+
+    /* Written content */
+    .written-content {
+      background: linear-gradient(160deg, var(--card) 0%, var(--card2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 28px 24px;
+    }
+    .written-content p.label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .written-content .body {
+      font-size: 17px;
+      color: var(--text);
+      line-height: 1.75;
+      white-space: pre-wrap;
+      font-style: italic;
+    }
+
+    /* Personal note */
+    .personal-note {
+      background: var(--card2);
+      border-left: 4px solid var(--purple-light);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .personal-note p.label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .personal-note .note-text {
+      font-size: 16px;
+      color: var(--text);
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* ── App CTA ────────────────────────────────────────────── */
+    .app-cta {
+      background: linear-gradient(160deg, var(--card) 0%, var(--card2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 28px 24px;
+      text-align: center;
+    }
+    .app-cta .cta-icon { font-size: 40px; margin-bottom: 12px; }
+    .app-cta h3 { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .app-cta p  { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+
+    .btn-gold {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--gold-start) 0%, var(--gold-mid) 50%, var(--gold-end) 100%);
+      color: #0E0B1F;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 16px 36px;
+      border-radius: 50px;
+      letter-spacing: 0.2px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-gold:hover { opacity: 0.9; }
+
+    .btn-outline {
+      display: inline-block;
+      background: transparent;
+      color: var(--purple-light);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 12px 28px;
+      border-radius: 50px;
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--purple); }
+
+    /* ── Vault conversion prompt (after 3 views) ────────────── */
+    #vault-prompt {
+      display: none;
+      background: linear-gradient(135deg, #2A1F4A 0%, #1A1535 100%);
+      border: 1.5px solid var(--purple-light);
+      border-radius: 20px;
+      padding: 28px 28px 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    #vault-prompt .pulse-icon {
+      font-size: 44px;
+      animation: pulse 2.2s ease-in-out infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.08); }
+    }
+    #vault-prompt h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--purple-light);
+      margin-bottom: 8px;
+    }
+    #vault-prompt p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding-top: 12px;
+    }
+    .footer p {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+    .footer a { color: var(--purple); text-decoration: none; font-weight: 600; }
+    .footer a:hover { color: var(--purple-light); }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .memory-header { padding: 22px 20px 18px; }
+      .from-name { font-size: 22px; }
+      .written-content { padding: 22px 20px; }
+      .app-cta { padding: 22px 20px; }
+      #vault-prompt { padding: 22px 20px; }
+      .btn-gold { padding: 14px 28px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Sky header ──────────────────────────────────────── -->
+  <div class="sky">
+    <div class="sky-layer sky-1"></div>
+    <div class="sky-layer sky-2"></div>
+    <div class="sky-layer sky-3"></div>
+    <div class="sky-layer sky-4"></div>
+    <div class="sky-layer sky-5"></div>
+    <div class="sky-layer sky-6"></div>
+    <div class="sky-brand">
+      <div class="dove">🕊️</div>
+      <div class="brand">Solace Life</div>
+      <div class="sub">A moment has arrived for you</div>
+    </div>
+  </div>
+
+  <!-- ── Page content ────────────────────────────────────── -->
+  <div class="page">
+
+    <!-- Loading state -->
+    <div id="state-loading" class="state active">
+      <div class="spinner"></div>
+      <p>Opening your moment…</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="state-error" class="state">
+      <div class="icon">🕊️</div>
+      <h2>Moment not found</h2>
+      <p>This link may have expired or the moment hasn't been delivered yet.
+         If someone shared this with you personally, ask them to resend the link.</p>
+    </div>
+
+    <!-- Memory content state -->
+    <div id="state-memory" class="state">
+
+      <!-- Vault conversion prompt (shown after 3 views) -->
+      <div id="vault-prompt">
+        <div class="pulse-icon">💜</div>
+        <h3>Keep this moment forever</h3>
+        <p>You've visited this moment a few times — it clearly means something.
+           Create your free Solace vault and it'll be there whenever you want it,
+           along with every moment sent your way.</p>
+        <a href="https://solacelife.ca" class="btn-gold" style="display:inline-block;margin-bottom:10px;">
+          Create Your Free Vault
+        </a>
+      </div>
+
+      <!-- From / greeting -->
+      <div class="section">
+        <div class="memory-header">
+          <div class="from-tag">A moment from</div>
+          <div class="from-name" id="sender-name">—</div>
+          <div class="greeting-line">
+            Dear <span class="recipient" id="recipient-name">friend</span>, someone
+            who loves you scheduled this moment to reach you on this day.
+          </div>
+          <div class="delivery-date">
+            Delivered on <span id="delivery-date">—</span>
+          </div>
+
+          <!-- Time capsule block — shown only when recorded_date is available -->
+          <div class="time-capsule" id="time-capsule-block" style="display:none;">
+            <div class="tc-label">⏳ Time Capsule</div>
+            <div class="tc-row">
+              <div class="tc-col">
+                <div class="tc-icon">📅</div>
+                <div class="tc-head">Recorded</div>
+                <div class="tc-date" id="tc-recorded-date">—</div>
+              </div>
+              <div class="tc-col">
+                <div class="tc-icon">🕊️</div>
+                <div class="tc-head">Arriving Today</div>
+                <div class="tc-date" id="tc-delivery-date">—</div>
+              </div>
+            </div>
+            <div class="tc-footer" id="tc-footer"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Memory type + title -->
+      <div class="section">
+        <div class="memory-type-card">
+          <div class="memory-icon" id="memory-icon">📖</div>
+          <div class="memory-meta">
+            <div class="memory-title" id="memory-title">A Special Moment</div>
+            <div class="memory-type-badge" id="memory-type-badge">Written Story</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Media — rendered dynamically -->
+      <div class="section" id="media-section"></div>
+
+      <!-- Written content (for note/text memories) -->
+      <div class="section" id="content-section" style="display:none;">
+        <div class="written-content">
+          <p class="label">Message</p>
+          <div class="body" id="memory-content"></div>
+        </div>
+      </div>
+
+      <!-- Personal note from sender -->
+      <div class="section" id="note-section" style="display:none;">
+        <div class="personal-note">
+          <p class="label">Personal note from <span id="note-sender-name">—</span></p>
+          <div class="note-text" id="personal-note-text"></div>
+        </div>
+      </div>
+
+      <!-- App download CTA -->
+      <div class="section">
+        <div class="app-cta">
+          <div class="cta-icon">🕊️</div>
+          <h3>Receive moments like this forever</h3>
+          <p>
+            Download the Solace Life app — free for recipients.
+            Your personal vault keeps every moment safe, playable anytime,
+            even long after this web link expires.
+          </p>
+          <a href="https://solacelife.ca" class="btn-gold" style="display:inline-block;margin-bottom:14px;">
+            Download Solace Life — Free
+          </a>
+          <br>
+          <a href="https://solacelife.ca" class="btn-outline">
+            Learn more at solacelife.ca
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>
+          Sent with love via
+          <a href="https://solacelife.ca">Solace Life</a>.
+          <br>
+          You received this because someone chose to share a moment with you.<br>
+          <a href="https://solacelife.ca/privacy">Privacy</a> ·
+          <a href="https://solacelife.ca/terms">Terms</a>
+        </p>
+      </div>
+
+    </div><!-- /state-memory -->
+  </div><!-- /page -->
+
+  <script>
+    // ── Config ────────────────────────────────────────────────
+    const SUPABASE_PROJECT = 'yfthwahxahjabfbuntys'
+    const EDGE_FN_URL = `https://${SUPABASE_PROJECT}.supabase.co/functions/v1/get-memory-web`
+
+    // ── State helpers ─────────────────────────────────────────
+    function showState(id) {
+      document.querySelectorAll('.state').forEach(el => el.classList.remove('active'))
+      document.getElementById('state-' + id).classList.add('active')
+    }
+
+    // ── Utility: format date ──────────────────────────────────
+    function formatDate(dateStr) {
+      if (!dateStr) return '—'
+      // ISO timestamps already have timezone info; bare dates need noon offset to avoid UTC drift
+      const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T12:00:00')
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    }
+
+    // ── Utility: human-readable time gap ─────────────────────
+    function timeGapLabel(fromStr, toStr) {
+      const from = new Date(fromStr)
+      const to   = toStr ? (toStr.includes('T') ? new Date(toStr) : new Date(toStr + 'T12:00:00')) : new Date()
+      const days    = Math.floor((to - from) / (1000 * 60 * 60 * 24))
+      const years   = Math.floor(days / 365)
+      const months  = Math.floor(days / 30)
+      if (years >= 2)   return `${years} years`
+      if (years === 1)  return '1 year'
+      if (months >= 2)  return `${months} months`
+      if (months === 1) return '1 month'
+      if (days >= 2)    return `${days} days`
+      if (days === 1)   return '1 day'
+      return 'today'
+    }
+
+    // ── Render memory type metadata ───────────────────────────
+    function renderTypeMeta(type) {
+      const map = {
+        voice:  { icon: '🎙️', label: 'Voice Memo' },
+        video:  { icon: '🎬', label: 'Video Moment' },
+        photo:  { icon: '📷', label: 'Photo Moment' },
+        note:   { icon: '📖', label: 'Written Story' },
+        text:   { icon: '📖', label: 'Written Story' },
+      }
+      return map[type] || map['note']
+    }
+
+    // ── Render media section ──────────────────────────────────
+    function renderMedia(type, mediaUrl, title) {
+      const el = document.getElementById('media-section')
+      if (!mediaUrl) { el.style.display = 'none'; return }
+
+      if (type === 'voice') {
+        el.innerHTML = `
+          <div class="audio-player-wrap">
+            <p class="label">🎙️ Voice Recording</p>
+            <audio controls preload="metadata" src="${escHtml(mediaUrl)}">
+              Your browser doesn't support audio playback.
+            </audio>
+          </div>`
+      } else if (type === 'video') {
+        el.innerHTML = `
+          <div class="video-player-wrap">
+            <video controls preload="metadata" playsinline
+                   poster=""
+                   src="${escHtml(mediaUrl)}">
+              Your browser doesn't support video playback.
+            </video>
+          </div>`
+      } else if (type === 'photo') {
+        el.innerHTML = `
+          <div class="photo-wrap">
+            <img src="${escHtml(mediaUrl)}" alt="${escHtml(title || 'Moment photo')}">
+          </div>`
+      } else {
+        el.style.display = 'none'
+      }
+    }
+
+    // ── Escape HTML ───────────────────────────────────────────
+    function escHtml(str) {
+      if (!str) return ''
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+    }
+
+    // ── Main: load memory ─────────────────────────────────────
+    async function loadMemory() {
+      const params = new URLSearchParams(window.location.search)
+      const token  = params.get('token')
+
+      if (!token) {
+        showState('error')
+        return
+      }
+
+      try {
+        const res  = await fetch(`${EDGE_FN_URL}?token=${encodeURIComponent(token)}`)
+        const data = await res.json()
+
+        if (!res.ok || !data.success) {
+          showState('error')
+          return
+        }
+
+        const m = data.memory
+
+        // Populate header
+        document.getElementById('sender-name').textContent    = m.sender_name    || 'Someone who loves you'
+        document.getElementById('recipient-name').textContent = m.recipient_name  || 'friend'
+        document.getElementById('note-sender-name').textContent = m.sender_name  || 'them'
+        document.getElementById('delivery-date').textContent  = formatDate(m.scheduled_date)
+
+        // Time capsule block — show only when we know the recorded date
+        if (m.recorded_date) {
+          const gap = timeGapLabel(m.recorded_date, m.scheduled_date)
+          document.getElementById('tc-recorded-date').textContent = formatDate(m.recorded_date)
+          document.getElementById('tc-delivery-date').textContent = formatDate(m.scheduled_date)
+          document.getElementById('tc-footer').textContent =
+            `${m.sender_name || 'They'} recorded this ${gap} ago — and kept it waiting just for you.`
+          document.getElementById('time-capsule-block').style.display = 'block'
+        }
+
+        // Memory type
+        const typeMeta = renderTypeMeta(m.type)
+        document.getElementById('memory-icon').textContent       = typeMeta.icon
+        document.getElementById('memory-title').textContent      = m.title || 'A Special Moment'
+        document.getElementById('memory-type-badge').textContent = typeMeta.label
+
+        // Media
+        renderMedia(m.type, m.media_url, m.title)
+
+        // Written content
+        if (m.content) {
+          document.getElementById('content-section').style.display = 'block'
+          document.getElementById('memory-content').textContent = m.content
+        }
+
+        // Personal note
+        if (m.personal_note) {
+          document.getElementById('note-section').style.display = 'block'
+          document.getElementById('personal-note-text').textContent = m.personal_note
+        }
+
+        // Vault conversion prompt after 3 views
+        if (data.view_count >= 3) {
+          document.getElementById('vault-prompt').style.display = 'block'
+        }
+
+        showState('memory')
+
+      } catch (err) {
+        console.error('Failed to load memory:', err)
+        showState('error')
+      }
+    }
+
+    // ── Run ───────────────────────────────────────────────────
+    loadMemory()
+  </script>
+</body>
+</html>

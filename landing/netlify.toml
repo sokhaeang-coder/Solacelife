@@ -1,0 +1,43 @@
+# Solace Life — Netlify configuration
+# Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
+
+# Static site — no build step needed. This overrides any build command set in the Netlify UI.
+[build]
+  command   = ""
+  publish   = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# When your hero video files are added:
+[[headers]]
+  for = "/*.mp4"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/*.webm"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Redirect www → apex
+[[redirects]]
+  from   = "https://www.solacelife.ca/*"
+  to     = "https://solacelife.ca/:splat"
+  status = 301
+  force  = true

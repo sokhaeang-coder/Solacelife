@@ -1,0 +1,3 @@
+# Netlify redirects
+# www → apex (backup rule — netlify.toml takes priority)
+https://www.solacelife.ca/* https://solacelife.ca/:splat 301!

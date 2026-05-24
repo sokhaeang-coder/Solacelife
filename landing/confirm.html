@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<!-- v3 — consent accept/decline -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Solace Life — Confirm Invitation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg,
+        #1E1248 0%,
+        #251458 18%,
+        #2E1660 35%,
+        #381660 52%,
+        #5A1848 72%,
+        #4A0810 100%
+      );
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    /* Ambient orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb1 { width: 400px; height: 400px; top: -80px; right: -60px;  background: rgba(140, 24, 72, 0.25); }
+    .orb2 { width: 350px; height: 350px; bottom: -60px; left: -40px; background: rgba(74, 8, 16, 0.35);  }
+    .orb3 { width: 250px; height: 250px; top: 30%; left: 20%;        background: rgba(46, 22, 96, 0.20);  }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+      width: 100%;
+      background: linear-gradient(160deg, rgba(42,8,24,0.92) 0%, rgba(74,20,40,0.92) 100%);
+      border: 1px solid rgba(140,24,72,0.35);
+      border-radius: 28px;
+      padding: 44px 36px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+
+    /* Brand */
+    .logo-wrap {
+      margin-bottom: 28px;
+    }
+    .logo-ring {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4A1828, #3A0C1A);
+      border: 2px solid rgba(212,120,154,0.3);
+      box-shadow: 0 0 40px rgba(140,24,72,0.4);
+      font-size: 32px;
+      margin-bottom: 14px;
+    }
+    .brand-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #EEE8F5;
+      letter-spacing: -0.3px;
+    }
+    .brand-sub {
+      font-size: 13px;
+      color: #D4789A;
+      margin-top: 4px;
+    }
+
+    /* Spinner */
+    .spinner-wrap {
+      padding: 32px 0;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(212,120,154,0.2);
+      border-top-color: #E8A87C;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 18px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text {
+      font-size: 15px;
+      color: #C490A0;
+    }
+
+    /* States */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    .icon-big {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 20px;
+      animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.3); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #EEE8F5;
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+
+    .body-text {
+      font-size: 15px;
+      color: #C490A0;
+      line-height: 1.65;
+      margin-bottom: 8px;
+    }
+
+    .name-highlight {
+      color: #F5CEAA;
+      font-weight: 600;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(140,24,72,0.5), transparent);
+      margin: 28px 0;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #F5CEAA 0%, #E8A87C 50%, #C07840 100%);
+      color: #0E0B1F;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 16px 40px;
+      border-radius: 50px;
+      letter-spacing: 0.2px;
+      transition: opacity 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+    .cta-btn:hover { opacity: 0.88; }
+
+    .ghost-btn {
+      display: inline-block;
+      background: transparent;
+      color: #D4789A;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 13px 36px;
+      border-radius: 50px;
+      letter-spacing: 0.2px;
+      border: 1px solid rgba(140,24,72,0.5);
+      transition: opacity 0.2s;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .ghost-btn:hover { opacity: 0.75; }
+
+    .privacy-note {
+      font-size: 12px;
+      color: rgba(180,100,130,0.6);
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: rgba(100,60,80,0.8);
+    }
+    .footer a {
+      color: #D4789A;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+
+  <div class="card">
+
+    <!-- Brand header -->
+    <div class="logo-wrap">
+      <div class="logo-ring">♡</div>
+      <div class="brand-name">Solace Life</div>
+      <div class="brand-sub">Preserving what matters most</div>
+    </div>
+
+    <!-- Loading state -->
+    <div id="state-loading" class="state active">
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <p class="spinner-text" id="loading-text">One moment…</p>
+      </div>
+    </div>
+
+    <!-- Accept success state -->
+    <div id="state-accept" class="state">
+      <div class="icon-big">💌</div>
+      <h1>You're all set!</h1>
+      <p class="body-text">
+        Thank you, <span class="name-highlight" id="accept-name"></span>.
+      </p>
+      <p class="body-text">
+        When <span class="name-highlight" id="accept-sender"></span> has a message for you,
+        it'll arrive right here by email — no app or account needed.
+      </p>
+
+      <div class="divider"></div>
+
+      <p class="body-text" style="margin-bottom:20px;">
+        Want to keep all your messages in one place?
+      </p>
+      <a href="https://solacelife.ca" class="cta-btn">Download Solace Life — Free ›</a>
+
+      <p class="footer" style="margin-top:28px;">
+        <a href="https://solacelife.ca">solacelife.ca</a>
+      </p>
+    </div>
+
+    <!-- Decline success state -->
+    <div id="state-decline" class="state">
+      <div class="icon-big">🕊️</div>
+      <h1>Preference saved</h1>
+      <p class="body-text">
+        That's completely okay. If you ever feel differently,
+        <span class="name-highlight" id="decline-sender"></span> can always reach out again.
+      </p>
+      <p class="privacy-note">
+        Your decision is private — the sender will not be notified.
+      </p>
+
+      <div class="divider"></div>
+
+      <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life ›</a>
+    </div>
+
+    <!-- Already confirmed / already declined states (idempotent) -->
+    <div id="state-already-accept" class="state">
+      <div class="icon-big">💚</div>
+      <h1>Already confirmed</h1>
+      <p class="body-text">
+        You're all set, <span class="name-highlight" id="already-accept-name"></span>.
+        Messages will arrive by email when they're ready for you.
+      </p>
+
+      <div class="divider"></div>
+
+      <a href="https://solacelife.ca" class="cta-btn">Open Solace Life ›</a>
+    </div>
+
+    <div id="state-already-decline" class="state">
+      <div class="icon-big">✓</div>
+      <h1>Already saved</h1>
+      <p class="body-text">
+        Your preference is already on file — nothing has changed.
+      </p>
+      <p class="privacy-note">
+        If you ever feel differently, reach out to the person who invited you.
+      </p>
+
+      <div class="divider"></div>
+
+      <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life ›</a>
+    </div>
+
+    <!-- Error state -->
+    <div id="state-error" class="state">
+      <div class="icon-big">🔗</div>
+      <h1>Link not found</h1>
+      <p class="body-text">
+        This link may have already been used, or it may have expired.
+      </p>
+      <p class="body-text">
+        If you believe this is a mistake, ask the person who invited you to resend the invite.
+      </p>
+      <p id="error-detail" style="font-size:13px;color:rgba(255,138,138,0.7);margin-top:8px;"></p>
+
+      <div class="divider"></div>
+
+      <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life ›</a>
+    </div>
+
+  </div>
+
+  <script>
+    const CONFIRM_EDGE_URL  = 'https://yfthwahxahjabfbuntys.supabase.co/functions/v1/confirm-family-email'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdGh3YWh4YWhqYWJmYnVudHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MTE4MzAsImV4cCI6MjA5NDE4NzgzMH0.VfnjNTjE7RRux6s4-3icNLQoyhTl_mGYrW3Zlz9e_kE'
+
+    function showState(id) {
+      document.querySelectorAll('.state').forEach(el => el.classList.remove('active'))
+      document.getElementById(id).classList.add('active')
+    }
+
+    async function run() {
+      const params = new URLSearchParams(window.location.search)
+      const token  = params.get('token')
+      const action = params.get('action') || 'accept'   // default: accept (backward compat)
+
+      // Show contextual loading text
+      const loadingEl = document.getElementById('loading-text')
+      if (loadingEl) {
+        loadingEl.textContent = action === 'decline'
+          ? 'Saving your preference…'
+          : 'Confirming your email…'
+      }
+
+      if (!token) {
+        showState('state-error')
+        document.getElementById('error-detail').textContent = 'No confirmation token found in this link.'
+        return
+      }
+
+      try {
+        const res  = await fetch(
+          `${CONFIRM_EDGE_URL}?token=${encodeURIComponent(token)}&action=${encodeURIComponent(action)}`,
+          { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+        )
+        const data = await res.json()
+
+        if (!res.ok) {
+          showState('state-error')
+          document.getElementById('error-detail').textContent = data.error || ''
+          return
+        }
+
+        const recipientName = data.name       || ''
+        const senderName    = data.senderName || 'the person who invited you'
+
+        if (data.action === 'decline' || action === 'decline') {
+          if (data.already_declined) {
+            showState('state-already-decline')
+          } else {
+            document.getElementById('decline-sender').textContent = senderName
+            showState('state-decline')
+          }
+          return
+        }
+
+        // Accept path
+        if (data.already_confirmed) {
+          document.getElementById('already-accept-name').textContent = recipientName
+          showState('state-already-accept')
+          return
+        }
+
+        document.getElementById('accept-name').textContent   = recipientName
+        document.getElementById('accept-sender').textContent = senderName
+        showState('state-accept')
+
+      } catch (err) {
+        showState('state-error')
+        document.getElementById('error-detail').textContent = 'Network error — please try again.'
+      }
+    }
+
+    run()
+  </script>
+
+</body>
+</html>
