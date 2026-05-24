@@ -761,12 +761,10 @@ export default function FamilyScreen() {
   // Fix: close the Add/Edit modal first, request permission in clean air,
   // then show the contact picker. The modal re-opens when a contact is selected.
   async function openContactPicker() {
-    // Use the native iOS/Android contact picker — no custom list needed.
-    // presentContactPickerAsync() opens the system Contacts UI and returns
-    // the selected contact directly. Requires contacts permission first.
-    setShowModal(false)
-    await new Promise(resolve => setTimeout(resolve, 350))
-
+    // presentContactPickerAsync() must be called while a view is visible —
+    // iOS needs an active view controller to present the native picker from.
+    // So we keep the modal open, call the picker on top of it, then handle
+    // the result afterwards (selectContact re-opens the modal with pre-filled data).
     try {
       const { status: existing } = await Contacts.getPermissionsAsync()
 
@@ -775,8 +773,8 @@ export default function FamilyScreen() {
           'Contacts Access Blocked',
           'Solace Life needs access to your contacts. Open Settings to allow it.',
           [
-            { text: 'Cancel', style: 'cancel', onPress: () => setShowModal(true) },
-            { text: 'Open Settings', onPress: () => { Linking.openSettings(); setShowModal(true) } },
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
           ]
         )
         return
@@ -785,27 +783,21 @@ export default function FamilyScreen() {
       if (existing !== 'granted') {
         const { status } = await Contacts.requestPermissionsAsync()
         if (status !== 'granted') {
-          Alert.alert(
-            'Permission Required',
-            'Please allow contacts access to use this feature.',
-            [{ text: 'OK', onPress: () => setShowModal(true) }]
-          )
+          Alert.alert('Permission Required', 'Please allow contacts access to use this feature.')
           return
         }
       }
 
-      // Open the native system contact picker
+      // Present native picker on top of the open modal
       const contact = await Contacts.presentContactPickerAsync()
       if (contact) {
+        // selectContact pre-fills the form and re-opens the modal
         selectContact(contact)
-      } else {
-        // User cancelled — re-open the form
-        setShowModal(true)
       }
+      // If null, user cancelled — modal is still open, nothing to do
     } catch (e) {
       console.warn('openContactPicker error:', e)
-      Alert.alert('Error', 'Could not open contacts. Please try again.',
-        [{ text: 'OK', onPress: () => setShowModal(true) }])
+      Alert.alert('Error', 'Could not open contacts. Please try again.')
     }
   }
 
