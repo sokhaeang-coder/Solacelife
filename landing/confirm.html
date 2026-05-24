@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v4 — landing page visual: animated sky + swaying grass, text-on-scene (Option C) -->
+<!-- v5 — Layout B: text-on-scene · green grass matching landing page · gold accents -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -26,22 +26,53 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      padding: 40px 24px 80px;
+      padding: 40px 24px 100px;
     }
 
-    /* ── Sky — six phases cycling ─────────────────────────────── */
+    /* ── Sky — six phases cycling 54s ─────────────────────────── */
     .sky {
       position: absolute;
       inset: 0;
       opacity: 0;
       animation: skyPhase 54s ease-in-out infinite;
     }
-    .sky-1 { background: linear-gradient(to bottom, #5A4890 0%, #8B68AA 28%, #C47890 52%, #A03858 70%, #3A1820 100%); animation-delay: 0s; }
-    .sky-2 { background: linear-gradient(to bottom, #6B5A9E 0%, #A870A0 28%, #E06030 52%, #F4A020 70%, #4A3020 100%); animation-delay: -9s; }
-    .sky-3 { background: linear-gradient(to bottom, #7878B8 0%, #B890A8 30%, #E09040 54%, #F4B830 72%, #503820 100%); animation-delay: -18s; }
-    .sky-4 { background: linear-gradient(to bottom, #7A5A9C 0%, #C06080 30%, #E05030 52%, #F4A020 70%, #443020 100%); animation-delay: -27s; }
-    .sky-5 { background: linear-gradient(to bottom, #5C4898 0%, #B05080 28%, #D83C30 50%, #F08020 68%, #2A1810 100%); animation-delay: -36s; }
-    .sky-6 { background: linear-gradient(to bottom, #4A3C88 0%, #8B5A98 30%, #B04060 54%, #7A2030 74%, #241418 100%); animation-delay: -45s; }
+
+    /* Pre-dawn */
+    .sky-1 {
+      background: linear-gradient(to bottom,
+        #5A4890 0%, #8B68AA 28%, #C47890 52%, #A03858 70%, #3A1820 100%);
+      animation-delay: 0s;
+    }
+    /* Sunrise */
+    .sky-2 {
+      background: linear-gradient(to bottom,
+        #6B5A9E 0%, #A870A0 28%, #E06030 52%, #F4A020 70%, #4A3020 100%);
+      animation-delay: -9s;
+    }
+    /* Morning */
+    .sky-3 {
+      background: linear-gradient(to bottom,
+        #7878B8 0%, #B890A8 30%, #E09040 54%, #F4B830 72%, #503820 100%);
+      animation-delay: -18s;
+    }
+    /* Golden hour */
+    .sky-4 {
+      background: linear-gradient(to bottom,
+        #7A5A9C 0%, #C06080 30%, #E05030 52%, #F4A020 70%, #443020 100%);
+      animation-delay: -27s;
+    }
+    /* Sunset */
+    .sky-5 {
+      background: linear-gradient(to bottom,
+        #5C4898 0%, #B05080 28%, #D83C30 50%, #F08020 68%, #2A1810 100%);
+      animation-delay: -36s;
+    }
+    /* Dusk */
+    .sky-6 {
+      background: linear-gradient(to bottom,
+        #4A3C88 0%, #8B5A98 30%, #B04060 54%, #7A2030 74%, #241418 100%);
+      animation-delay: -45s;
+    }
 
     @keyframes skyPhase {
       0%   { opacity: 0; }
@@ -64,6 +95,7 @@
       animation: sunShift 54s ease-in-out infinite;
       pointer-events: none;
     }
+
     @keyframes sunShift {
       0%   { background: radial-gradient(ellipse, rgba(180,56,85,0.45)  0%, transparent 70%); }
       11%  { background: radial-gradient(ellipse, rgba(244,160,32,0.65) 0%, transparent 70%); }
@@ -74,34 +106,33 @@
       100% { background: radial-gradient(ellipse, rgba(180,56,85,0.45)  0%, transparent 70%); }
     }
 
-    /* ── Overlay — darkens bottom so grass reads, softens top ─── */
+    /* ── Overlay — darkens scene so text is legible ───────────── */
     .overlay {
       position: absolute;
       inset: 0;
       background: linear-gradient(
         to bottom,
-        rgba(20,15,5,0.18)  0%,
-        rgba(10,8,2,0.05)   40%,
-        rgba(5,4,1,0.38)    75%,
-        rgba(2,2,1,0.62)    100%
+        rgba(20,15,5,0.20)  0%,
+        rgba(10,8,2,0.06)   38%,
+        rgba(5,4,1,0.40)    72%,
+        rgba(2,2,1,0.65)    100%
       );
       z-index: 1;
       pointer-events: none;
     }
 
-    /* ── Grass — z-index ABOVE overlay so blades show ─────────── */
+    /* ── Grass — z-index above overlay so blades show ─────────── */
     .grass-wrap {
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 38%;
-      z-index: 2;   /* above overlay */
+      height: 36%;
+      z-index: 2;
       pointer-events: none;
     }
 
     .blade {
       position: absolute;
       bottom: 0;
-      width: 2px;
       border-radius: 2px 2px 0 0;
       transform-origin: bottom center;
       animation: sway linear infinite alternate;
@@ -135,9 +166,17 @@
       font-weight: 500;
       letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: rgba(246,243,236,0.65);
+      color: rgba(246,243,236,0.60);
       text-shadow: 0 1px 8px rgba(0,0,0,0.4);
       margin-bottom: 56px;
+    }
+
+    /* ── Gold divider line ────────────────────────────────────── */
+    .gold-rule {
+      width: 40px;
+      height: 1px;
+      background: rgba(196,154,60,0.65);
+      margin: 28px auto;
     }
 
     /* ── States ───────────────────────────────────────────────── */
@@ -175,9 +214,21 @@
       to   { transform: scale(1);   opacity: 1; }
     }
 
+    /* Eyebrow */
+    .eyebrow {
+      font-size: 0.70rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(196,154,60,0.85);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+      display: block;
+      margin-bottom: 16px;
+    }
+
     h1 {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.7rem, 5vw, 2.4rem);
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
       font-weight: 400;
       color: #F6F3EC;
       line-height: 1.2;
@@ -188,7 +239,7 @@
     .body-text {
       font-size: 1rem;
       color: rgba(246,243,236,0.85);
-      line-height: 1.7;
+      line-height: 1.75;
       margin-bottom: 10px;
       font-weight: 300;
       text-shadow: 0 1px 10px rgba(0,0,0,0.5);
@@ -199,14 +250,7 @@
       font-weight: 500;
     }
 
-    .divider {
-      width: 48px;
-      height: 1px;
-      background: rgba(246,243,236,0.3);
-      margin: 28px auto;
-    }
-
-    /* Buttons */
+    /* Primary CTA button — cream pill, matches landing page hero */
     .cta-btn {
       display: inline-block;
       background: rgba(246,243,236,0.96);
@@ -224,33 +268,34 @@
     }
     .cta-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
+    /* Ghost / secondary button */
     .ghost-btn {
       display: inline-block;
       background: transparent;
-      color: rgba(246,243,236,0.8);
+      color: rgba(246,243,236,0.75);
       text-decoration: none;
       font-weight: 400;
       font-size: 0.9rem;
       padding: 14px 36px;
       border-radius: 50px;
-      border: 1px solid rgba(246,243,236,0.35);
+      border: 1px solid rgba(246,243,236,0.30);
       transition: opacity 0.2s;
       cursor: pointer;
       margin-top: 12px;
     }
-    .ghost-btn:hover { opacity: 0.75; }
+    .ghost-btn:hover { opacity: 0.70; }
 
     .privacy-note {
       font-size: 0.78rem;
-      color: rgba(246,243,236,0.45);
+      color: rgba(246,243,236,0.42);
       margin-top: 18px;
       line-height: 1.5;
       text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
 
     .error-detail {
-      font-size: 0.8rem;
-      color: rgba(255,180,160,0.7);
+      font-size: 0.80rem;
+      color: rgba(255,180,160,0.70);
       margin-top: 10px;
     }
 
@@ -258,12 +303,12 @@
       display: block;
       margin-top: 36px;
       font-size: 0.75rem;
-      color: rgba(246,243,236,0.35);
+      color: rgba(246,243,236,0.32);
       text-decoration: none;
       letter-spacing: 0.05em;
       text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
-    .footer-link:hover { color: rgba(246,243,236,0.6); }
+    .footer-link:hover { color: rgba(246,243,236,0.58); }
   </style>
 </head>
 <body>
@@ -281,7 +326,7 @@
     <!-- Sun glow -->
     <div class="sun-glow"></div>
 
-    <!-- Overlay (darkens scene, z-index 1) -->
+    <!-- Overlay (z-index 1) -->
     <div class="overlay"></div>
 
     <!-- Grass (z-index 2 — above overlay) -->
@@ -293,15 +338,16 @@
       <div class="logo">Solace Life</div>
       <div class="logo-sub">Preserving what matters most</div>
 
-      <!-- Loading -->
+      <!-- ── Loading ─────────────────────────────────────────── -->
       <div id="state-loading" class="state active">
         <div class="spinner"></div>
         <p class="spinner-text" id="loading-text">One moment…</p>
       </div>
 
-      <!-- Accept success -->
+      <!-- ── Accept success ──────────────────────────────────── -->
       <div id="state-accept" class="state">
         <span class="icon-big">💌</span>
+        <span class="eyebrow">invitation confirmed</span>
         <h1>You're all set</h1>
         <p class="body-text">
           Thank you, <span class="name-highlight" id="accept-name"></span>.
@@ -310,7 +356,7 @@
           When <span class="name-highlight" id="accept-sender"></span> has a moment for you,
           it'll arrive right here by email — no app or account needed.
         </p>
-        <div class="divider"></div>
+        <div class="gold-rule"></div>
         <p class="body-text" style="margin-bottom: 24px;">
           Want to keep all your moments in one place?
         </p>
@@ -318,45 +364,49 @@
         <a href="https://solacelife.ca" class="footer-link">solacelife.ca</a>
       </div>
 
-      <!-- Decline success -->
+      <!-- ── Decline success ─────────────────────────────────── -->
       <div id="state-decline" class="state">
         <span class="icon-big">🕊️</span>
-        <h1>Preference saved</h1>
+        <span class="eyebrow">preference saved</span>
+        <h1>That's okay</h1>
         <p class="body-text">
-          That's completely okay. If you ever feel differently,
+          If you ever feel differently,
           <span class="name-highlight" id="decline-sender"></span> can always reach out again.
         </p>
         <p class="privacy-note">Your decision is private — the sender will not be notified.</p>
-        <div class="divider"></div>
+        <div class="gold-rule"></div>
         <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
       </div>
 
-      <!-- Already confirmed -->
+      <!-- ── Already confirmed ───────────────────────────────── -->
       <div id="state-already-accept" class="state">
         <span class="icon-big">💚</span>
-        <h1>Already confirmed</h1>
+        <span class="eyebrow">already confirmed</span>
+        <h1>You're all set</h1>
         <p class="body-text">
-          You're all set, <span class="name-highlight" id="already-accept-name"></span>.
-          Moments will arrive by email when they're ready for you.
+          <span class="name-highlight" id="already-accept-name"></span>,
+          moments will arrive by email when they're ready for you.
         </p>
-        <div class="divider"></div>
+        <div class="gold-rule"></div>
         <a href="https://solacelife.ca" class="cta-btn">Open Solace Life →</a>
       </div>
 
-      <!-- Already declined -->
+      <!-- ── Already declined ────────────────────────────────── -->
       <div id="state-already-decline" class="state">
-        <span class="icon-big">✓</span>
-        <h1>Already saved</h1>
-        <p class="body-text">Your preference is already on file — nothing has changed.</p>
+        <span class="icon-big">🕊️</span>
+        <span class="eyebrow">preference on file</span>
+        <h1>Nothing has changed</h1>
+        <p class="body-text">Your preference is already saved — no action needed.</p>
         <p class="privacy-note">If you ever feel differently, reach out to the person who invited you.</p>
-        <div class="divider"></div>
+        <div class="gold-rule"></div>
         <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
       </div>
 
-      <!-- Error -->
+      <!-- ── Error ───────────────────────────────────────────── -->
       <div id="state-error" class="state">
         <span class="icon-big">🔗</span>
-        <h1>Link not found</h1>
+        <span class="eyebrow">link not found</span>
+        <h1>Something went wrong</h1>
         <p class="body-text">
           This link may have already been used, or it may have expired.
         </p>
@@ -364,42 +414,65 @@
           If you believe this is a mistake, ask the person who invited you to resend the invite.
         </p>
         <p class="error-detail" id="error-detail"></p>
-        <div class="divider"></div>
+        <div class="gold-rule"></div>
         <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
       </div>
 
     </div>
   </div>
 
+  <!-- ── Grass generator — exact match with landing/index.html ── -->
   <script>
-    /* ── Grass generation ───────────────────────────────────────── */
     (function () {
-      const wrap   = document.getElementById('grass')
-      const colors = ['#8B7A30','#A09040','#C4B060','#6B5E28','#D4C070','#7A6A34','#B0A050','#504820']
-      const count  = 120
-      for (let i = 0; i < count; i++) {
-        const b   = document.createElement('div')
-        b.className = 'blade'
-        const h   = 30 + Math.random() * 80
-        const lf  = (-3 - Math.random() * 6).toFixed(1)
-        const lt  = ( 3 + Math.random() * 6).toFixed(1)
-        const dur = (1.6 + Math.random() * 2.4).toFixed(2)
-        const del = (Math.random() * 2.5).toFixed(2)
-        const col = colors[Math.floor(Math.random() * colors.length)]
-        b.style.cssText = [
-          `left:${((i / count) * 100 + (Math.random() - 0.5) * 1.5).toFixed(2)}%`,
-          `height:${h}px`,
-          `background:${col}`,
-          `--lean-from:${lf}deg`,
-          `--lean-to:${lt}deg`,
+      const wrap = document.getElementById('grass')
+      if (!wrap) return
+
+      const W = window.innerWidth || 1440
+      const bladeCount = Math.min(Math.floor(W / 3.2), 520)
+
+      const baseColors = [
+        ['#3A5C30', '#5A8050'],
+        ['#4A6B3C', '#6A9060'],
+        ['#344E2A', '#507045'],
+        ['#5A7A4A', '#7A9E6A'],
+        ['#2E4824', '#4A6840'],
+        ['#3E5E34', '#608055'],
+        ['#6A8A5A', '#8AAA7A'],
+      ]
+
+      for (let i = 0; i < bladeCount; i++) {
+        const blade = document.createElement('div')
+        blade.className = 'blade'
+
+        const leftPct = (i / bladeCount) * 102 - 1
+        const heightPct = 45 + Math.random() * 55
+        const widthPx = 1 + Math.random() * 2.2
+        const [colBot, colTop] = baseColors[Math.floor(Math.random() * baseColors.length)]
+        const dur = 2.8 + Math.random() * 3.4
+        const delay = -(Math.random() * dur)
+        const leanBase = -4 + Math.random() * 8
+        const swing = 2.5 + Math.random() * 4
+        const opacity = 0.55 + Math.random() * 0.45
+
+        blade.style.cssText = [
+          `left:${leftPct}%`,
+          `height:${heightPct}%`,
+          `width:${widthPx}px`,
+          `background:linear-gradient(to top,${colBot},${colTop})`,
+          `opacity:${opacity}`,
+          `--lean-from:${leanBase - swing}deg`,
+          `--lean-to:${leanBase + swing}deg`,
           `animation-duration:${dur}s`,
-          `animation-delay:-${del}s`,
+          `animation-delay:${delay}s`,
         ].join(';')
-        wrap.appendChild(b)
+
+        wrap.appendChild(blade)
       }
     })()
+  </script>
 
-    /* ── Confirmation logic ─────────────────────────────────────── */
+  <!-- ── Confirmation logic ────────────────────────────────────── -->
+  <script>
     const CONFIRM_EDGE_URL  = 'https://yfthwahxahjabfbuntys.supabase.co/functions/v1/confirm-family-email'
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdGh3YWh4YWhqYWJmYnVudHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MTE4MzAsImV4cCI6MjA5NDE4NzgzMH0.VfnjNTjE7RRux6s4-3icNLQoyhTl_mGYrW3Zlz9e_kE'
 
