@@ -94,7 +94,50 @@ Deno.serve(async (req) => {
 })
 
 
-// ─── Email HTML template ──────────────────────────────────────
+// ─── Sunrise shared layout ────────────────────────────────────
+function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText }: {
+  title: string; headerIcon: string; headerSubtitle: string; bodyHtml: string; footerText: string
+}) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#FFF8F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F5;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+        <!-- Gradient header -->
+        <tr><td style="background:linear-gradient(160deg,#F06292 0%,#F48A5A 55%,#FFD07A 100%);border-radius:20px 20px 0 0;padding:36px 32px 28px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:40px;line-height:1;">${headerIcon}</p>
+          <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px;">Solace Life</h1>
+          <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);">${headerSubtitle}</p>
+        </td></tr>
+
+        <!-- White card body -->
+        <tr><td style="background:#fff;border-radius:0 0 20px 20px;padding:32px 32px 28px;border:1px solid #F9D0BB;border-top:none;">
+          ${bodyHtml}
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td align="center" style="padding-top:20px;">
+          <p style="margin:0 0 4px;font-size:12px;color:#7A3448;opacity:0.7;">
+            Sent with love via <a href="https://solacelife.ca" style="color:#F06292;text-decoration:none;font-weight:600;">Solace Life</a>
+          </p>
+          <p style="margin:0;font-size:11px;color:#7A3448;opacity:0.5;">${footerText}</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+// ─── Email HTML template — Sunrise theme ─────────────────────
 function buildInviteEmail({
   senderName,
   recipientName,
@@ -108,181 +151,73 @@ function buildInviteEmail({
   acceptUrl:     string
   declineUrl:    string
 }) {
-  // Pick a warm relationship-specific line
   const relationshipLine =
-    relationship === 'Spouse'  ? `your partner, ${senderName},` :
-    relationship === 'Child'   ? `${senderName},` :
-    relationship === 'Parent'  ? `${senderName},` :
-    relationship === 'Sibling' ? `${senderName},` :
+    relationship === 'spouse'  ? `your partner, ${senderName},` :
+    relationship === 'child'   ? `${senderName},` :
+    relationship === 'parent'  ? `${senderName},` :
+    relationship === 'sibling' ? `${senderName},` :
                                   `${senderName},`
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>${senderName} has added you to Solace Life</title>
-</head>
-<body style="margin:0;padding:0;background-color:#0E0B1F;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  return sunriseEmail({
+    title: `${senderName} has added you to Solace Life`,
+    headerIcon: '💌',
+    headerSubtitle: 'Someone who cares about you has something to share',
+    bodyHtml: `
+      <p style="margin:0 0 6px;font-size:13px;color:#7A3448;font-style:italic;">Dear ${recipientName},</p>
+      <p style="margin:8px 0 16px;font-size:15px;color:#3D1020;line-height:1.65;">
+        <strong style="color:#F06292;">${relationshipLine}</strong>
+        has been saving something just for you — personal letters, voice messages,
+        and moments they want you to have.
+      </p>
 
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"
-    style="background-color:#0E0B1F;padding:48px 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" border="0"
-          style="max-width:600px;width:100%;">
+      <div style="background:#FFF0E8;border-radius:14px;padding:18px 20px;border:1px solid #F9D0BB;margin-bottom:20px;">
+        <p style="margin:0 0 10px;font-size:14px;color:#3D1020;line-height:1.65;">
+          ${senderName} is using Solace Life to send personal messages to the people
+          they love most — on birthdays, quiet Tuesdays, or whenever you need it most.
+        </p>
+        <p style="margin:0;font-size:13px;color:#7A3448;line-height:1.6;">
+          Messages arrive by email — right in your browser. No app needed. No subscription required.
+        </p>
+      </div>
 
-          <!-- Brand header -->
-          <tr>
-            <td align="center" style="padding-bottom:40px;">
-              <p style="margin:0 0 10px;font-size:42px;line-height:1;">🕊️</p>
-              <h1 style="margin:0;font-size:26px;font-weight:700;color:#EEE8F5;letter-spacing:-0.3px;">
-                Solace Life
-              </h1>
-              <p style="margin:10px 0 0;font-size:14px;color:#7B5EA7;">
-                Preserving what matters most
-              </p>
-            </td>
-          </tr>
+      <p style="margin:0 0 6px;font-size:15px;color:#3D1020;text-align:center;font-weight:600;">
+        ${senderName} has something for you. Would you like to receive it?
+      </p>
+      <p style="margin:0 0 22px;font-size:13px;color:#7A3448;text-align:center;">
+        This is entirely your choice. You can change your mind any time.
+      </p>
 
-          <!-- Main card -->
-          <tr>
-            <td style="background:linear-gradient(160deg,#1A1535 0%,#231848 100%);
-                        border-radius:24px;padding:40px 36px;
-                        border:1px solid #2A1F4A;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <div style="text-align:center;margin-bottom:12px;">
+        <a href="${acceptUrl}"
+          style="display:inline-block;background:linear-gradient(135deg,#F06292,#F48A5A);
+                  color:#fff;text-decoration:none;font-weight:700;
+                  font-size:16px;padding:16px 40px;border-radius:50px;letter-spacing:0.2px;">
+          💌 Yes — I'd love to hear from them
+        </a>
+      </div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <a href="${declineUrl}"
+          style="display:inline-block;background:transparent;color:#7A3448;
+                  text-decoration:none;font-weight:600;font-size:13px;
+                  padding:10px 28px;border-radius:50px;border:1px solid #F9D0BB;">
+          I'd prefer to stay connected another way
+        </a>
+      </div>
 
-                <!-- Greeting -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <p style="margin:0 0 6px;font-size:15px;color:#9985BB;">
-                      Dear ${recipientName},
-                    </p>
-                    <p style="margin:0;font-size:18px;color:#EEE8F5;line-height:1.65;">
-                      <strong style="color:#C9A8FF;">${relationshipLine}</strong>
-                      has been saving something just for you — personal letters, voice messages,
-                      and moments they want you to have.
-                    </p>
-                  </td>
-                </tr>
+      <p style="margin:0 0 20px;font-size:12px;color:#7A3448;text-align:center;opacity:0.7;">
+        This is just for you — ${senderName} won't know which option you selected.
+      </p>
 
-                <!-- What Solace Life is — warm, present-tense, no death framing -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <div style="background:#0E0B1F;border-radius:16px;padding:26px 24px;
-                                border:1px solid #2A1F4A;">
-                      <p style="margin:0 0 14px;font-size:15px;color:#C9A8FF;line-height:1.65;">
-                        ${senderName} is using Solace Life to send personal messages, letters,
-                        and moments to the people they love most — on birthdays, quiet Tuesdays,
-                        or whenever you need it most.
-                      </p>
-                      <p style="margin:0;font-size:14px;color:#9985BB;line-height:1.6;">
-                        When a message arrives for you, it'll come by email — right in your browser,
-                        no app needed. No subscription, no account required.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Consent — framed as a gift, not a death notice -->
-                <tr>
-                  <td align="center" style="padding-bottom:12px;">
-                    <p style="margin:0 0 8px;font-size:15px;color:#EEE8F5;line-height:1.65;text-align:center;">
-                      ${senderName} has something for you. Would you like to receive it?
-                    </p>
-                    <p style="margin:0 0 24px;font-size:13px;color:#7B5EA7;text-align:center;">
-                      This is entirely your choice. You can change your mind any time.
-                    </p>
-
-                    <!-- Accept button -->
-                    <a href="${acceptUrl}"
-                      style="display:inline-block;
-                              background:linear-gradient(135deg,#F5CEAA 0%,#E8A87C 50%,#C07840 100%);
-                              color:#0E0B1F;text-decoration:none;font-weight:700;
-                              font-size:17px;padding:18px 48px;border-radius:50px;
-                              letter-spacing:0.2px;margin-bottom:14px;">
-                      💌 Yes — I'd love to hear from them
-                    </a>
-
-                    <br>
-
-                    <!-- Decline button — preference, not rejection -->
-                    <a href="${declineUrl}"
-                      style="display:inline-block;
-                              background:transparent;
-                              color:#7B5EA7;text-decoration:none;font-weight:600;
-                              font-size:14px;padding:12px 36px;border-radius:50px;
-                              border:1px solid #2A1F4A;margin-top:4px;">
-                      I'd prefer to stay connected another way
-                    </a>
-
-                    <p style="margin:16px 0 0;font-size:12px;color:#4A3D60;text-align:center;">
-                      This is just for you — ${senderName} won't know which option you selected.
-                    </p>
-                  </td>
-                </tr>
-
-                <!-- Divider -->
-                <tr>
-                  <td style="padding:24px 0;">
-                    <div style="height:1px;background:linear-gradient(to right,transparent,#2A1F4A,transparent);"></div>
-                  </td>
-                </tr>
-
-                <!-- CTA -->
-                <tr>
-                  <td align="center" style="padding-bottom:16px;">
-                    <p style="margin:0 0 16px;font-size:14px;color:#7B5EA7;text-align:center;">
-                      Want to keep all your messages in one place?
-                    </p>
-                    <a href="https://solacelife.ca"
-                      style="display:inline-block;
-                              background:transparent;
-                              color:#C9A8FF;text-decoration:none;font-weight:600;
-                              font-size:15px;padding:14px 36px;border-radius:50px;
-                              border:1px solid #4A3D60;
-                              letter-spacing:0.2px;">
-                      Download Solace Life — Free ›
-                    </a>
-                  </td>
-                </tr>
-
-                <!-- Reassurance -->
-                <tr>
-                  <td>
-                    <p style="margin:0;font-size:13px;color:#4A3D60;line-height:1.6;
-                              text-align:center;">
-                      No subscription required. Your vault is free, always.<br>
-                      Messages sent to you will arrive automatically by email.
-                    </p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td align="center" style="padding-top:36px;">
-              <p style="margin:0 0 6px;font-size:12px;color:#4A3D60;">
-                Sent with love via
-                <a href="https://solacelife.ca"
-                  style="color:#7B5EA7;text-decoration:none;font-weight:600;">
-                  Solace Life
-                </a>
-              </p>
-              <p style="margin:0;font-size:11px;color:#2A1F4A;">
-                You received this because ${senderName} added you as a family member.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>`
+      <div style="border-top:1px solid #F9D0BB;padding-top:18px;text-align:center;">
+        <p style="margin:0 0 10px;font-size:13px;color:#7A3448;">Want to keep all your messages in one place?</p>
+        <a href="https://solacelife.ca"
+          style="display:inline-block;background:transparent;color:#F06292;
+                  text-decoration:none;font-weight:600;font-size:14px;
+                  padding:10px 24px;border-radius:50px;border:1px solid #F9C4D4;">
+          Download Solace Life — Free ›
+        </a>
+      </div>
+    `,
+    footerText: `You received this because ${senderName} added you as a family member.`,
+  })
 }

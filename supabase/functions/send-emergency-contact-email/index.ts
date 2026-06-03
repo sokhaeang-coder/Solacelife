@@ -1,20 +1,17 @@
 // ═══════════════════════════════════════════════════════════════
-//  SOLACE LIFE — Send Emergency Contact Email
+//  SOLACE LIFE — Send Emergency Contact Consent Email
 //
-//  Called whenever a family member is designated as an emergency
-//  contact — either during onboarding or from the Family tab.
-//  Sends a warm, clear email to the designated person explaining
-//  their role and what to expect.
+//  Called when G1 designates a family member as an emergency
+//  contact. Sends a consent-request email — G2 must explicitly
+//  accept or decline before the role activates.
 //
 //  POST body:
 //    { family_member_id: string, is_new_member?: boolean }
 //
 //  is_new_member = true  → person was just added AND designated
 //                          at the same time (onboarding flow).
-//                          Email acknowledges both facts.
-//  is_new_member = false → person already existed as a family
-//                          member, now being elevated to emergency
-//                          contact. Email focuses on the new role.
+//  is_new_member = false → person already in family circle, now
+//                          being asked to be emergency contact.
 // ═══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -43,10 +40,10 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-  // ── Fetch the family member row ───────────────────────────────
+  // ── Fetch the family member row (including consent token) ─────
   const { data: member, error: memberErr } = await supabase
     .from('family_members')
-    .select('id, name, email, relationship, emergency_priority, user_id')
+    .select('id, name, email, relationship, emergency_priority, user_id, emergency_consent_token')
     .eq('id', family_member_id)
     .single()
 
@@ -56,9 +53,13 @@ Deno.serve(async (req) => {
   }
 
   if (!member.email) {
-    // No email address — nothing we can do, but not an error worth crashing on
     console.log(`No email for member ${family_member_id} — skipping emergency email`)
     return new Response(JSON.stringify({ skipped: true, reason: 'no_email' }), { status: 200 })
+  }
+
+  if (!member.emergency_consent_token) {
+    console.error('No emergency_consent_token on member — run migration 040 first')
+    return new Response(JSON.stringify({ error: 'No consent token available' }), { status: 500 })
   }
 
   // ── Fetch the sender's profile ────────────────────────────────
@@ -70,19 +71,35 @@ Deno.serve(async (req) => {
 
   const senderName    = profile?.full_name || 'Someone who cares about you'
   const recipientName = member.name
-  const priority      = member.emergency_priority ?? 1
+
+  // ── Build accept / decline URLs ───────────────────────────────
+  const acceptUrl  = `https://solacelife.ca/confirm.html?token=${member.emergency_consent_token}&action=accept&type=emergency`
+  const declineUrl = `https://solacelife.ca/confirm.html?token=${member.emergency_consent_token}&action=decline&type=emergency`
+
+  // ── Set status to pending in DB ───────────────────────────────
+  await supabase
+    .from('family_members')
+    .update({
+      emergency_consent_status:       'pending',
+      emergency_consent_requested_at: new Date().toISOString(),
+      // Reset reminder timestamps so resends get fresh 7d/30d reminders
+      emergency_reminder_7d_sent_at:  null,
+      emergency_reminder_30d_sent_at: null,
+    })
+    .eq('id', member.id)
 
   // ── Build and send the email ──────────────────────────────────
   const emailPayload = {
     from:    FROM_EMAIL,
     to:      [member.email],
-    subject: `🆘 ${senderName} has named you as their emergency contact`,
-    html: buildEmergencyEmail({
+    subject: `${senderName} would be honoured to have you as their emergency contact`,
+    html: buildConsentEmail({
       senderName,
       recipientName,
       relationship: member.relationship,
-      priority,
-      isNewMember: is_new_member,
+      isNewMember:  is_new_member,
+      acceptUrl,
+      declineUrl,
     }),
   }
 
@@ -101,7 +118,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Email send failed', detail: errText }), { status: 500 })
   }
 
-  console.log(`Emergency contact email sent → ${member.email}`)
+  console.log(`Emergency consent email sent → ${member.email}`)
   return new Response(
     JSON.stringify({ success: true, to: member.email }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -109,233 +126,144 @@ Deno.serve(async (req) => {
 })
 
 
-// ─── Email HTML template ──────────────────────────────────────
-function buildEmergencyEmail({
-  senderName,
-  recipientName,
-  relationship,
-  priority,
-  isNewMember,
-}: {
-  senderName:   string
-  recipientName: string
-  relationship:  string
-  priority:      number
-  isNewMember:   boolean
+// ─── Sunrise shared layout ────────────────────────────────────
+function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText }: {
+  title: string; headerIcon: string; headerSubtitle: string; bodyHtml: string; footerText: string
 }) {
-  const priorityLabel =
-    priority === 1 ? 'primary'   :
-    priority === 2 ? 'secondary' : 'tertiary'
-
-  const relationshipPhrase =
-    relationship === 'Spouse'  ? 'your partner'        :
-    relationship === 'Child'   ? 'their child'         :
-    relationship === 'Parent'  ? 'their parent'        :
-    relationship === 'Sibling' ? 'their sibling'       :
-    relationship === 'Friend'  ? 'a close friend'      :
-                                  'someone they trust'
-
-  const subjectLine = isNewMember
-    ? `${senderName} has added you to their Solace Life family — and named you as their emergency contact.`
-    : `${senderName} has named you as their emergency contact on Solace Life.`
-
-  const newMemberBadge = isNewMember ? `
-    <!-- New member note -->
-    <tr>
-      <td style="padding-bottom:28px;">
-        <div style="background:#1A2E1A;border-radius:14px;padding:20px 22px;
-                    border:1px solid #2A4A2A;">
-          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#6FCF97;
-                    text-transform:uppercase;letter-spacing:1.2px;">
-            Also — you have been added to their family
-          </p>
-          <p style="margin:0;font-size:15px;color:#D4EDDA;line-height:1.6;">
-            ${senderName} has added you as ${relationshipPhrase} in their Solace Life vault.
-            This means memories, messages, and moments they record will be
-            delivered to you — on birthdays, anniversaries, and the days that matter most.
-          </p>
-        </div>
-      </td>
-    </tr>` : ''
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>${senderName} has named you as their emergency contact</title>
+  <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0E0B1F;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"
-    style="background-color:#0E0B1F;padding:48px 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" border="0"
-          style="max-width:600px;width:100%;">
-
-          <!-- Brand header -->
-          <tr>
-            <td align="center" style="padding-bottom:40px;">
-              <p style="margin:0 0 10px;font-size:42px;line-height:1;">🕊️</p>
-              <h1 style="margin:0;font-size:26px;font-weight:700;color:#EEE8F5;letter-spacing:-0.3px;">
-                Solace Life
-              </h1>
-              <p style="margin:10px 0 0;font-size:14px;color:#7B5EA7;">
-                Preserving what matters most
-              </p>
-            </td>
-          </tr>
-
-          <!-- Main card -->
-          <tr>
-            <td style="background:linear-gradient(160deg,#1A1535 0%,#231848 100%);
-                        border-radius:24px;padding:40px 36px;
-                        border:1px solid #2A1F4A;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
-
-                <!-- Emergency badge -->
-                <tr>
-                  <td align="center" style="padding-bottom:28px;">
-                    <div style="display:inline-block;background:#3D0E0E;border-radius:50px;
-                                padding:10px 24px;border:1px solid #7A2020;">
-                      <p style="margin:0;font-size:14px;font-weight:700;color:#FF8A80;
-                                letter-spacing:0.5px;">
-                        🆘 &nbsp;You are ${senderName}'s ${priorityLabel} emergency contact
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Greeting -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <p style="margin:0 0 6px;font-size:15px;color:#9985BB;">
-                      Dear ${recipientName},
-                    </p>
-                    <p style="margin:0;font-size:18px;color:#EEE8F5;line-height:1.65;">
-                      ${subjectLine}
-                    </p>
-                  </td>
-                </tr>
-
-                ${newMemberBadge}
-
-                <!-- What this means -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <div style="background:#0E0B1F;border-radius:16px;padding:26px 24px;
-                                border:1px solid #2A1F4A;">
-                      <p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#7B5EA7;
-                                text-transform:uppercase;letter-spacing:1.5px;">
-                        What does this mean for you?
-                      </p>
-                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                        <tr>
-                          <td style="padding-bottom:16px;vertical-align:top;width:28px;">
-                            <p style="margin:0;font-size:18px;line-height:1;">📱</p>
-                          </td>
-                          <td style="padding-bottom:16px;padding-left:12px;vertical-align:top;">
-                            <p style="margin:0;font-size:15px;color:#EEE8F5;line-height:1.55;">
-                              <strong>Your name and number appear on ${senderName}'s lock screen</strong> —
-                              accessible to first responders without needing to unlock the phone.
-                            </p>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding-bottom:16px;vertical-align:top;">
-                            <p style="margin:0;font-size:18px;line-height:1;">📞</p>
-                          </td>
-                          <td style="padding-bottom:16px;padding-left:12px;vertical-align:top;">
-                            <p style="margin:0;font-size:15px;color:#EEE8F5;line-height:1.55;">
-                              <strong>If something happens, you may get a call from a stranger</strong> —
-                              a nurse, a bystander, or a first responder reaching out on
-                              ${senderName}'s behalf.
-                            </p>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="vertical-align:top;">
-                            <p style="margin:0;font-size:18px;line-height:1;">💛</p>
-                          </td>
-                          <td style="padding-left:12px;vertical-align:top;">
-                            <p style="margin:0;font-size:15px;color:#EEE8F5;line-height:1.55;">
-                              <strong>It means they trust you completely</strong> —
-                              you are the person ${senderName} wants by their side most.
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- No action needed -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <div style="background:#1A1535;border-radius:14px;padding:20px 22px;
-                                border:1px solid #2A1F4A;text-align:center;">
-                      <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:#C9A8FF;">
-                        Nothing you need to do right now
-                      </p>
-                      <p style="margin:0;font-size:14px;color:#7B5EA7;line-height:1.6;">
-                        Just know that if you ever receive an unexpected call from a stranger
-                        asking about ${senderName}, it may be someone reaching out through Solace Life.
-                        Pick up. It could matter more than you know.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Divider -->
-                <tr>
-                  <td style="padding:4px 0 24px;">
-                    <div style="height:1px;background:linear-gradient(to right,transparent,#2A1F4A,transparent);"></div>
-                  </td>
-                </tr>
-
-                <!-- Download CTA -->
-                <tr>
-                  <td align="center" style="padding-bottom:16px;">
-                    <p style="margin:0 0 16px;font-size:14px;color:#7B5EA7;text-align:center;">
-                      Want to preserve your own memories for the people you love?
-                    </p>
-                    <a href="https://solacelife.ca"
-                      style="display:inline-block;
-                              background:transparent;
-                              color:#C9A8FF;text-decoration:none;font-weight:600;
-                              font-size:15px;padding:14px 36px;border-radius:50px;
-                              border:1px solid #4A3D60;">
-                      Explore Solace Life — Free ›
-                    </a>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td align="center" style="padding-top:36px;">
-              <p style="margin:0 0 6px;font-size:12px;color:#4A3D60;">
-                Sent with care via
-                <a href="https://solacelife.ca"
-                  style="color:#7B5EA7;text-decoration:none;font-weight:600;">
-                  Solace Life
-                </a>
-              </p>
-              <p style="margin:0;font-size:11px;color:#2A1F4A;">
-                You received this because ${senderName} designated you as their emergency contact.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
+<body style="margin:0;padding:0;background-color:#FFF8F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F5;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td style="background:linear-gradient(160deg,#F06292 0%,#F48A5A 55%,#FFD07A 100%);border-radius:20px 20px 0 0;padding:36px 32px 28px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:40px;line-height:1;">${headerIcon}</p>
+          <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px;">Solace Life</h1>
+          <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);">${headerSubtitle}</p>
+        </td></tr>
+        <tr><td style="background:#fff;border-radius:0 0 20px 20px;padding:32px 32px 28px;border:1px solid #F9D0BB;border-top:none;">
+          ${bodyHtml}
+        </td></tr>
+        <tr><td align="center" style="padding-top:20px;">
+          <p style="margin:0 0 4px;font-size:12px;color:#7A3448;opacity:0.7;">
+            Sent with love via <a href="https://solacelife.ca" style="color:#F06292;text-decoration:none;font-weight:600;">Solace Life</a>
+          </p>
+          <p style="margin:0;font-size:11px;color:#7A3448;opacity:0.5;">${footerText}</p>
+        </td></tr>
+      </table>
+    </td></tr>
   </table>
-
 </body>
 </html>`
+}
+
+// ─── Email HTML template — Sunrise theme ─────────────────────
+function buildConsentEmail({
+  senderName,
+  recipientName,
+  relationship,
+  isNewMember,
+  acceptUrl,
+  declineUrl,
+}: {
+  senderName:    string
+  recipientName: string
+  relationship:  string
+  isNewMember:   boolean
+  acceptUrl:     string
+  declineUrl:    string
+}) {
+  const relationshipPhrase =
+    relationship === 'Spouse'  ? 'your partner'   :
+    relationship === 'Child'   ? 'their child'    :
+    relationship === 'Parent'  ? 'their parent'   :
+    relationship === 'Sibling' ? 'their sibling'  :
+    relationship === 'Friend'  ? 'a close friend' :
+                                  'someone they trust'
+
+  const introLine = isNewMember
+    ? `${senderName} has added you to their Solace Life family — and is asking you to be their emergency contact.`
+    : `${senderName} is asking for your permission to list you as their emergency contact on Solace Life.`
+
+  return sunriseEmail({
+    title: `${senderName} is asking you to be their emergency contact`,
+    headerIcon: '🛡️',
+    headerSubtitle: 'An emergency contact request',
+    bodyHtml: `
+      <p style="margin:0 0 6px;font-size:13px;color:#7A3448;font-style:italic;">Dear ${recipientName},</p>
+      <p style="margin:8px 0 20px;font-size:15px;color:#3D1020;line-height:1.65;">${introLine}</p>
+
+      <div style="background:#FFF0E8;border-radius:14px;border:1px solid #F9D0BB;padding:18px 20px;margin-bottom:20px;">
+        <p style="margin:0 0 14px;font-size:11px;color:#7A3448;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">What this means for you</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding-bottom:14px;vertical-align:top;width:28px;"><p style="margin:0;font-size:18px;line-height:1;">📱</p></td>
+            <td style="padding-bottom:14px;padding-left:12px;vertical-align:top;">
+              <p style="margin:0;font-size:14px;color:#3D1020;line-height:1.55;">
+                <strong>Your name may appear on their phone's lock screen</strong> — accessible to first responders if there's ever an emergency.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:14px;vertical-align:top;"><p style="margin:0;font-size:18px;line-height:1;">🔐</p></td>
+            <td style="padding-bottom:14px;padding-left:12px;vertical-align:top;">
+              <p style="margin:0;font-size:14px;color:#3D1020;line-height:1.55;">
+                <strong>You may be asked to help release their vault</strong> — the memories and documents ${senderName} has stored for their loved ones.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="vertical-align:top;"><p style="margin:0;font-size:18px;line-height:1;">💛</p></td>
+            <td style="padding-left:12px;vertical-align:top;">
+              <p style="margin:0;font-size:14px;color:#3D1020;line-height:1.55;">
+                <strong>It means ${senderName} trusts you completely</strong> — you are ${relationshipPhrase} they want by their side most.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="margin:0 0 22px;font-size:14px;color:#7A3448;text-align:center;line-height:1.65;">
+        You are free to accept or decline — this is entirely your choice.<br>
+        If you decline, ${senderName} will not be notified of your decision.
+      </p>
+
+      <div style="text-align:center;margin-bottom:10px;">
+        <a href="${acceptUrl}"
+          style="display:inline-block;background:linear-gradient(135deg,#F06292,#F48A5A);
+                  color:#fff;text-decoration:none;font-weight:700;
+                  font-size:15px;padding:15px 36px;border-radius:50px;">
+          Yes, I'm honoured to ›
+        </a>
+      </div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <a href="${declineUrl}"
+          style="display:inline-block;background:transparent;color:#7A3448;
+                  text-decoration:none;font-weight:500;font-size:13px;
+                  padding:10px 28px;border-radius:50px;border:1px solid #F9D0BB;">
+          No thank you
+        </a>
+      </div>
+
+      <p style="margin:0 0 20px;font-size:12px;color:#7A3448;text-align:center;opacity:0.7;">
+        Your response is private. ${senderName} will not see whether you accepted or declined.
+      </p>
+
+      <div style="border-top:1px solid #F9D0BB;padding-top:18px;text-align:center;">
+        <p style="margin:0 0 10px;font-size:13px;color:#7A3448;">Want to record your own memories for the people you love?</p>
+        <a href="https://solacelife.ca"
+          style="display:inline-block;background:transparent;color:#F06292;
+                  text-decoration:none;font-weight:600;font-size:13px;
+                  padding:10px 24px;border-radius:50px;border:1px solid #F9C4D4;">
+          Explore Solace Life — Free ›
+        </a>
+      </div>
+    `,
+    footerText: `You received this because ${senderName} has asked you to be their emergency contact.`,
+  })
 }

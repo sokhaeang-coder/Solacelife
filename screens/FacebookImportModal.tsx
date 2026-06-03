@@ -145,7 +145,7 @@ export default function FacebookImportModal({ visible, onClose, onImported }: Pr
         await supabase.from('vault_items').insert({
           user_id:     user.id,
           title:       caption.length > 80 ? caption.slice(0, 77) + '…' : caption,
-          category:    'personal_messages',
+          category:    'media',
           description: dateStr ? `Imported from Facebook · ${dateStr}` : 'Imported from Facebook',
           file_path:   storagePath,
           file_name:   `fb_${photo.id}.jpg`,
@@ -175,7 +175,8 @@ export default function FacebookImportModal({ visible, onClose, onImported }: Pr
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
+      <TouchableOpacity style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }} activeOpacity={1} onPress={handleClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
         <LinearGradient colors={WARM} style={{
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           padding: 24, maxHeight: '88%',
@@ -326,7 +327,8 @@ export default function FacebookImportModal({ visible, onClose, onImported }: Pr
           )}
 
         </LinearGradient>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   )
 }

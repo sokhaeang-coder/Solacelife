@@ -97,19 +97,43 @@ Deno.serve(async (req) => {
     .update({ web_view_count: newViewCount })
     .eq('id', delivery.id)
 
-  // ── Generate signed media URL if media exists ─────────────────
-  let mediaUrl: string | null = null
-  const filePath = (delivery.memories as any)?.file_path
+  // ── Generate signed media URL(s) ─────────────────────────────
+  //  Voice / video: use file_path → single signed URL
+  //  Photo albums:  content is a JSON array of { path } objects →
+  //                 sign each one and return the full list
+  let mediaUrl:   string | null = null
+  let photoUrls:  string[]      = []
+  const memory    = delivery.memories as any
+  const filePath  = memory?.file_path
 
-  if (filePath) {
+  if (memory?.type === 'photo' && memory?.content) {
+    // Photo album — content = '[{"path":"…"},{"path":"…"},…]'
+    try {
+      const photos: { path: string }[] = JSON.parse(memory.content)
+      const signed = await Promise.all(
+        photos
+          .filter((p: any) => !!p.path)
+          .map(async (p: any) => {
+            const { data } = await supabase.storage
+              .from('memories')
+              .createSignedUrl(p.path, 3600)
+            return data?.signedUrl ?? null
+          })
+      )
+      photoUrls = signed.filter(Boolean) as string[]
+      if (photoUrls.length > 0) mediaUrl = photoUrls[0]  // fallback for older clients
+    } catch (e) {
+      console.error('Photo content parse error:', e)
+    }
+  } else if (filePath) {
+    // Voice / video
     const { data: signed } = await supabase.storage
       .from('memories')
-      .createSignedUrl(filePath, 3600) // 1 hour expiry
+      .createSignedUrl(filePath, 3600)
     mediaUrl = signed?.signedUrl ?? null
   }
 
   // ── Build response ────────────────────────────────────────────
-  const memory = delivery.memories as any
   const response = {
     success:   true,
     view_count: newViewCount,
@@ -121,8 +145,9 @@ Deno.serve(async (req) => {
       scheduled_date: delivery.scheduled_date,
       recorded_date:  memory?.created_at   ?? null,
       sender_name:    senderName,
-      recipient_name: (delivery.family_members as any)?.name   ?? 'You',
+      recipient_name: (delivery.family_members as any)?.name ?? 'You',
       media_url:      mediaUrl,
+      photo_urls:     photoUrls.length > 0 ? photoUrls : undefined,
     }
   }
 

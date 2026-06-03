@@ -1,20 +1,25 @@
 /**
- * OnboardingEmergencyScreen
+ * OnboardingEmergencyScreen — Step 3 of 4
  *
- * Asks the user to designate an emergency contact during setup.
- * Shown after OnboardingOccasions, before OnboardingTour.
+ * Animated timeline that explains what trusted contacts do,
+ * then lets the user designate up to 3 (if family members exist).
  *
- * If the user has no family members yet, we show a clear explanation
- * and let them skip — they can set it up later in the Family tab.
- * If they do have family members, they pick up to 3 in priority order.
+ * Two states:
+ *   - No family members yet → 3rd node shows "add family first" (dashed/faded)
+ *   - Has family members   → 3rd node opens the priority picker
  */
-import { useState, useEffect } from 'react'
-import { Text, View, TouchableOpacity, ScrollView,
-         ActivityIndicator, StatusBar } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import {
+  Text, View, TouchableOpacity, ScrollView,
+  ActivityIndicator, StatusBar, Animated, PanResponder, Image,
+} from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../../lib/supabase'
 import { WARM, WM, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../lib/constants'
+
+const LOGO_STACKED = require('../../assets/logos/logo-stacked.png')
 import { refreshEmergencyNotification } from '../../lib/emergencyNotification'
+import { OnboardingNavBar } from '../../components/OnboardingNavBar'
 
 const PRIORITY_LABEL = ['1st', '2nd', '3rd']
 const PRIORITY_COLOR = ['#E8453C', '#F5833A', '#F5A623']
@@ -23,8 +28,13 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
   const [members, setMembers]   = useState<any[]>([])
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
-  // selected: ordered array of member IDs (index = priority - 1)
   const [selected, setSelected] = useState<string[]>([])
+
+  // ── Animation values ─────────────────────────────────────────
+  const anim0    = useRef(new Animated.Value(0)).current  // node 1
+  const anim1    = useRef(new Animated.Value(0)).current  // node 2
+  const anim2    = useRef(new Animated.Value(0)).current  // node 3
+  const lineAnim = useRef(new Animated.Value(0)).current  // spine opacity
 
   useEffect(() => {
     async function load() {
@@ -41,11 +51,32 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
     load()
   }, [])
 
+  // Staggered entrance once data is ready
+  useEffect(() => {
+    if (loading) return
+    const make = (val: Animated.Value, delay: number) =>
+      Animated.timing(val, { toValue: 1, duration: 480, delay, useNativeDriver: true })
+
+    Animated.parallel([
+      make(anim0,    200),
+      make(lineAnim, 400),
+      make(anim1,    620),
+      make(anim2,   1040),
+    ]).start()
+  }, [loading])
+
+  function animStyle(val: Animated.Value) {
+    return {
+      opacity: val,
+      transform: [{
+        translateY: val.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }),
+      }],
+    }
+  }
+
   function toggleMember(id: string) {
     setSelected(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(x => x !== id)
-      }
+      if (prev.includes(id)) return prev.filter(x => x !== id)
       if (prev.length >= 3) return prev
       return [...prev, id]
     })
@@ -71,12 +102,11 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
 
       await refreshEmergencyNotification(user.id)
 
-      // Fire emergency contact emails for each designated person (fire-and-forget)
-      // is_new_member = true because onboarding means they were just added as a
-      // family member AND designated at the same time — the email covers both facts.
+      // Fire consent emails — is_new_member=true because they were just
+      // added AND designated in the same onboarding flow
       selected.forEach(id => {
         fetch(`${SUPABASE_URL}/functions/v1/send-emergency-contact-email`, {
-          method: 'POST',
+          method:  'POST',
           headers: {
             'Content-Type':  'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -95,6 +125,18 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
     navigation.navigate('OnboardingTour')
   }
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy),
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx < -60) selected.length > 0 ? handleSave() : goNext()
+        else if (dx > 60) navigation.goBack()
+      },
+    })
+  ).current
+
+  // ── Loading spinner ──────────────────────────────────────────
   if (loading) {
     return (
       <LinearGradient colors={WARM} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -103,157 +145,250 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
     )
   }
 
+  // ── Helpers ──────────────────────────────────────────────────
+  function NodeDone() {
+    return (
+      <View style={{
+        width: 28, height: 28, borderRadius: 14, flexShrink: 0,
+        backgroundColor: '#F06292',
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#F06292', shadowOpacity: 0.45,
+        shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+        elevation: 4,
+      }}>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>
+      </View>
+    )
+  }
+
+  function NodePending() {
+    return (
+      <View style={{
+        width: 28, height: 28, borderRadius: 14, flexShrink: 0,
+        backgroundColor: '#F06292',
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#F06292', shadowOpacity: 0.45,
+        shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+        elevation: 4,
+      }}>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>✓</Text>
+      </View>
+    )
+  }
+
+  // ── Screen ───────────────────────────────────────────────────
   return (
     <LinearGradient colors={WARM} style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 48 }}
-        showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
-        <View style={{ alignItems: 'center', marginBottom: 8 }}>
-          <Text style={{ fontSize: 36 }}>♡</Text>
-          <Text style={{ fontSize: 12, color: WM.sub, letterSpacing: 1.5,
-            textTransform: 'uppercase', marginTop: 4 }}>Step 3 of 4</Text>
-        </View>
+      <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          paddingTop: 56,
+          paddingBottom: 16,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
 
-        <View style={{ alignItems: 'center', marginTop: 8, marginBottom: 28 }}>
-          <Text style={{ fontSize: 52, marginBottom: 12 }}>⭐</Text>
-          <Text style={{ fontSize: 26, fontWeight: '800', color: WM.title, textAlign: 'center', marginBottom: 10 }}>
+        {/* ── Header ── */}
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+          <Image source={LOGO_STACKED} style={{ height: 52, width: 100, resizeMode: 'contain', marginBottom: 10 }} />
+          <Text style={{ fontSize: 40, marginBottom: 6 }}>🛡️</Text>
+          <Text style={{
+            fontSize: 10, color: WM.sub, letterSpacing: 1.5,
+            textTransform: 'uppercase', marginBottom: 8,
+          }}>Step 2 of 3</Text>
+          <Text style={{
+            fontSize: 26, fontWeight: '800', color: WM.title,
+            textAlign: 'center', marginBottom: 10,
+          }}>
             Trusted Contacts
           </Text>
-          <Text style={{ fontSize: 15, color: WM.sub, textAlign: 'center', lineHeight: 24, maxWidth: 320 }}>
-            Choose who Solace Life notifies if you stop checking in — and who receives your vault when the time comes.
+          <Text style={{
+            fontSize: 14, color: WM.sub, textAlign: 'center',
+            lineHeight: 22, maxWidth: 300,
+          }}>
+            Here's what happens when you choose someone you trust.
           </Text>
         </View>
 
-        {/* How it works card */}
-        <View style={{
-          backgroundColor: WM.cardBg, borderRadius: 16, borderWidth: 1,
-          borderColor: WM.border, padding: 16, marginBottom: 28,
-        }}>
-          <Text style={{ color: WM.title, fontSize: 13, fontWeight: '700', marginBottom: 8 }}>How it works</Text>
-          <Text style={{ color: WM.sub, fontSize: 13, lineHeight: 20 }}>
-            {'🔔  Solace notifies them if you miss your check-ins\n'}
-            {'📦  They receive your vault messages when the time comes\n'}
-            {'📱  Optional: add them to your phone\'s emergency settings too'}
-          </Text>
-        </View>
+        {/* ── Animated timeline ── */}
+        <View style={{ position: 'relative', paddingLeft: 4, marginBottom: 28 }}>
 
-        {members.length === 0 ? (
-          /* No family members yet */
-          <View style={{
-            backgroundColor: WM.cardBg, borderRadius: 16,
-            borderWidth: 1, borderColor: WM.border, padding: 20, alignItems: 'center', marginBottom: 28,
-          }}>
-            <Text style={{ fontSize: 32, marginBottom: 10 }}>👨‍👩‍👧</Text>
-            <Text style={{ color: WM.title, fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 8 }}>
-              No family members added yet
-            </Text>
-            <Text style={{ color: WM.sub, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
-              You can add family members after setup and designate your trusted contacts from the Family tab.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={{ color: WM.sub, fontSize: 13, fontWeight: '600',
-              letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-              Choose up to 3 — in priority order
-            </Text>
+          {/* Vertical spine */}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 17, top: 28, bottom: 28,
+              width: 2, opacity: lineAnim,
+            }}
+          >
+            <LinearGradient
+              colors={['#F06292', 'rgba(240,98,146,0.12)']}
+              style={{ flex: 1, width: 2 }}
+            />
+          </Animated.View>
 
-            {members.map(m => {
-              const idx = selected.indexOf(m.id)
-              const isSelected = idx >= 0
-              const hasPhone = !!m.phone
+          {/* ── Node 1: Check-in alerts ── */}
+          <Animated.View style={[{
+            flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 18,
+          }, animStyle(anim0)]}>
+            <NodeDone />
+            <View style={{
+              flex: 1, backgroundColor: WM.cardBg, borderRadius: 16,
+              borderWidth: 1, borderColor: WM.border, padding: 14,
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: WM.title, marginBottom: 4 }}>
+                🔔  They keep an eye out for you
+              </Text>
+              <Text style={{ fontSize: 13, color: WM.sub, lineHeight: 20 }}>
+                Solace checks in with you regularly. If you go quiet, your trusted contact gets a gentle heads-up — so someone who cares always knows you're okay.
+              </Text>
+            </View>
+          </Animated.View>
 
-              return (
-                <TouchableOpacity
-                  key={m.id}
-                  onPress={() => hasPhone && toggleMember(m.id)}
-                  activeOpacity={0.8}
-                  disabled={!hasPhone}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 14,
-                    backgroundColor: isSelected ? '#E8453C12' : WM.cardBg,
-                    borderRadius: 16, padding: 16, marginBottom: 10,
-                    borderWidth: 1.5,
-                    borderColor: isSelected ? PRIORITY_COLOR[idx] + 'AA' : WM.border,
-                    opacity: hasPhone ? 1 : 0.45,
-                  }}>
-                  {/* Priority badge or placeholder */}
-                  <View style={{
-                    width: 38, height: 38, borderRadius: 19,
-                    backgroundColor: isSelected ? PRIORITY_COLOR[idx] + '22' : WM.cardBgAlt,
-                    alignItems: 'center', justifyContent: 'center',
-                    borderWidth: isSelected ? 1.5 : 1,
-                    borderColor: isSelected ? PRIORITY_COLOR[idx] : WM.border,
-                  }}>
-                    <Text style={{
-                      fontSize: isSelected ? 13 : 18, fontWeight: '700',
-                      color: isSelected ? PRIORITY_COLOR[idx] : WM.sub,
-                    }}>
-                      {isSelected ? PRIORITY_LABEL[idx] : '○'}
-                    </Text>
-                  </View>
+          {/* ── Node 2: Vault released ── */}
+          <Animated.View style={[{
+            flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 18,
+          }, animStyle(anim1)]}>
+            <NodeDone />
+            <View style={{
+              flex: 1, backgroundColor: WM.cardBg, borderRadius: 16,
+              borderWidth: 1, borderColor: WM.border, padding: 14,
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: WM.title, marginBottom: 4 }}>
+                💌  Your scheduled moments deliver themselves
+              </Text>
+              <Text style={{ fontSize: 13, color: WM.sub, lineHeight: 20 }}>
+                Birthday messages, anniversary notes, time capsules — these go out automatically to the people you chose, on the exact dates you set. Your trusted contact doesn't touch these.
+              </Text>
+            </View>
+          </Animated.View>
 
-                  {/* Name / relationship */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: WM.title, fontSize: 16, fontWeight: '600', marginBottom: 2 }}>
-                      {m.name}
-                    </Text>
-                    <Text style={{ color: WM.sub, fontSize: 13 }}>
-                      {m.relationship}
-                      {hasPhone ? `  ·  📞 ${m.phone}` : '  ·  No phone number'}
-                    </Text>
-                  </View>
+          {/* ── Node 3: conditional ── */}
+          <Animated.View style={[{
+            flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+          }, animStyle(anim2)]}>
 
-                  {isSelected && (
-                    <Text style={{ fontSize: 20, color: PRIORITY_COLOR[idx] }}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              )
-            })}
+            {members.length === 0 ? <NodePending /> : <NodeDone />}
 
-            <Text style={{ color: WM.sub, fontSize: 12, textAlign: 'center',
-              marginTop: 8, marginBottom: 24, lineHeight: 18 }}>
-              Contacts without a phone number can't be trusted contacts.{'\n'}
-              Add a number in the Family tab after setup.
-            </Text>
-          </>
-        )}
+            {members.length === 0 ? (
+              /* ── No members: faded "add first" card ── */
+              <View style={{
+                flex: 1,
+                backgroundColor: WM.cardBg,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: WM.border,
+                padding: 14,
+              }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: WM.title, marginBottom: 4 }}>
+                  🔐  Your vault needs a trusted hand
+                </Text>
+                <Text style={{ fontSize: 13, color: WM.sub, lineHeight: 20 }}>
+                  Your vault holds the deeper things — important documents, passwords, and records. After setup, add family members and designate up to 3 trusted contacts from the Family tab. They become your trusted guardians.
+                </Text>
+              </View>
 
-        {/* CTA buttons */}
-        <TouchableOpacity
-          onPress={selected.length > 0 ? handleSave : goNext}
-          disabled={saving}
-          activeOpacity={0.85}
-          style={{ marginBottom: 12 }}>
-          <View style={{
-            backgroundColor: selected.length > 0 ? '#E8453C' : WM.title,
-            borderRadius: 16, paddingVertical: 18,
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            {saving
-              ? <ActivityIndicator color="#FFD07A" />
-              : <>
-                  <Text style={{ fontSize: 18 }}>{selected.length > 0 ? '⭐' : '➡️'}</Text>
-                  <Text style={{ color: '#FFD07A', fontSize: 16, fontWeight: '800' }}>
-                    {selected.length > 0
-                      ? `Set ${selected.length} Trusted Contact${selected.length > 1 ? 's' : ''}`
-                      : 'Skip for Now'}
+            ) : (
+              /* ── Has members: priority picker ── */
+              <View style={{ flex: 1 }}>
+                <View style={{
+                  backgroundColor: WM.cardBg, borderRadius: 16,
+                  borderWidth: 1, borderColor: WM.border, padding: 14, marginBottom: 10,
+                }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: WM.title, marginBottom: 4 }}>
+                    🔐  Choose your trusted guardians
                   </Text>
-                </>
-            }
-          </View>
-        </TouchableOpacity>
+                  <Text style={{ fontSize: 13, color: WM.sub, lineHeight: 20 }}>
+                    Select up to 3 people below — in the order you'd want them to be contacted.
+                  </Text>
+                </View>
 
-        {selected.length > 0 && (
-          <TouchableOpacity onPress={goNext} activeOpacity={0.7}
-            style={{ alignItems: 'center', paddingVertical: 12 }}>
-            <Text style={{ color: WM.sub, fontSize: 14 }}>Skip for now — set up later in Family tab</Text>
-          </TouchableOpacity>
-        )}
+                {members.map(m => {
+                  const idx       = selected.indexOf(m.id)
+                  const isSelected = idx >= 0
+                  const hasPhone  = !!m.phone
+
+                  return (
+                    <TouchableOpacity
+                      key={m.id}
+                      onPress={() => hasPhone && toggleMember(m.id)}
+                      activeOpacity={0.8}
+                      disabled={!hasPhone}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 12,
+                        backgroundColor: isSelected ? PRIORITY_COLOR[idx] + '12' : WM.cardBg,
+                        borderRadius: 14, padding: 14, marginBottom: 8,
+                        borderWidth: 1.5,
+                        borderColor: isSelected ? PRIORITY_COLOR[idx] + 'BB' : WM.border,
+                        opacity: hasPhone ? 1 : 0.4,
+                      }}
+                    >
+                      <View style={{
+                        width: 36, height: 36, borderRadius: 18,
+                        backgroundColor: isSelected ? PRIORITY_COLOR[idx] + '22' : WM.cardBgAlt,
+                        alignItems: 'center', justifyContent: 'center',
+                        borderWidth: isSelected ? 1.5 : 1,
+                        borderColor: isSelected ? PRIORITY_COLOR[idx] : WM.border,
+                      }}>
+                        <Text style={{
+                          fontSize: isSelected ? 12 : 18, fontWeight: '700',
+                          color: isSelected ? PRIORITY_COLOR[idx] : WM.sub,
+                        }}>
+                          {isSelected ? PRIORITY_LABEL[idx] : '○'}
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: WM.title, fontSize: 15, fontWeight: '600', marginBottom: 2 }}>
+                          {m.name}
+                        </Text>
+                        <Text style={{ color: WM.sub, fontSize: 12 }}>
+                          {m.relationship}
+                          {hasPhone ? `  ·  📞 ${m.phone}` : '  ·  No phone number'}
+                        </Text>
+                      </View>
+
+                      {isSelected && (
+                        <Text style={{ fontSize: 20, color: PRIORITY_COLOR[idx] }}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  )
+                })}
+
+                {members.some(m => !m.phone) && (
+                  <Text style={{
+                    color: WM.sub, fontSize: 12, marginTop: 4,
+                    lineHeight: 18, opacity: 0.75, textAlign: 'center',
+                  }}>
+                    Contacts without a phone number can't be trusted contacts.{'\n'}
+                    Add a number in the Family tab after setup.
+                  </Text>
+                )}
+              </View>
+            )}
+
+          </Animated.View>
+        </View>
 
       </ScrollView>
+
+      <OnboardingNavBar
+        step={2}
+        onBack={() => navigation.goBack()}
+        onContinue={selected.length > 0 ? handleSave : goNext}
+        continueLabel={selected.length > 0
+          ? `Set ${selected.length} Trusted Contact${selected.length > 1 ? 's' : ''}`
+          : 'Continue'}
+        saving={saving}
+        onSkip={selected.length > 0 ? goNext : undefined}
+        skipLabel="Skip for now — set up later in Family tab"
+      />
+      </View>
     </LinearGradient>
   )
 }

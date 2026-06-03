@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Solace-Life",
+    "name": "Solace Life",
     "slug": "Solace-Life",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,34 +14,33 @@
       "backgroundColor": "#0E0B1F"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sokhaeang.Solace-Life",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Solace uses your microphone to record voice messages for your loved ones.",
-        "NSCameraUsageDescription": "Solace uses your camera to record video messages for your loved ones.",
-        "NSPhotoLibraryUsageDescription": "Solace accesses your photo library so you can choose a video to save as a memory.",
-        "NSSpeechRecognitionUsageDescription": "Solace uses speech recognition so you can speak your stories and memories instead of typing."
-      },
-      "bundleIdentifier": "com.sokhaeang.Solace-Life"
+        "NSMicrophoneUsageDescription": "Solace Life uses your microphone to record voice messages for your loved ones.",
+        "NSCameraUsageDescription": "Solace Life uses your camera to record video messages for your loved ones.",
+        "NSPhotoLibraryUsageDescription": "Solace Life accesses your photo library so you can choose photos and videos to save as memories.",
+        "NSPhotoLibraryAddUsageDescription": "Solace Life saves received photo memories to your camera roll.",
+        "NSSpeechRecognitionUsageDescription": "Solace Life uses speech recognition so you can speak your stories and memories instead of typing.",
+        "NSContactsUsageDescription": "Solace Life accesses your contacts so you can quickly add family members without typing."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0E0B1F"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.READ_CONTACTS",
-        "android.permission.WRITE_CONTACTS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CONTACTS",
         "android.permission.WRITE_CONTACTS",
@@ -69,11 +68,23 @@
       ],
       "expo-video",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Solace Life to save photo memories to your camera roll.",
+          "savePhotosPermission": "Allow Solace Life to save photo memories to your camera roll.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
         "expo-contacts",
         {
           "contactsPermission": "Allow Solace Life to access your contacts so you can quickly add family members without typing."
         }
-      ]
+      ],
+      "expo-localization",
+      "@sentry/react-native",
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "extra": {
       "eas": {

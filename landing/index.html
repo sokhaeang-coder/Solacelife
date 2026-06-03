@@ -49,12 +49,16 @@
     }
 
     .logo {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.15rem;
-      color: #F6F3EC;
+      display: inline-flex;
+      align-items: center;
       text-decoration: none;
-      letter-spacing: 0.02em;
-      text-shadow: 0 1px 8px rgba(0,0,0,0.25);
+    }
+
+    .logo img {
+      height: 48px;
+      width: auto;
+      /* drop-shadow to keep it visible over any sky colour */
+      filter: drop-shadow(0 1px 8px rgba(0,0,0,0.35));
     }
 
     .nav-cta {
@@ -745,10 +749,13 @@
     }
 
     .footer-logo {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.2rem;
-      color: var(--ink-soft);
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .footer-logo img {
+      height: 80px;
+      width: auto;
+      opacity: 0.88;
     }
 
     .footer-tagline {
@@ -803,7 +810,9 @@
 
   <!-- ── NAV ──────────────────────────────────────────────────── -->
   <nav aria-label="Main navigation">
-    <a href="#" class="logo">Solace Life</a>
+    <a href="#" class="logo">
+      <img src="logos/logo-nav.png" alt="Solace Life" />
+    </a>
     <a href="#founding" class="nav-cta">Founding access</a>
   </nav>
 
@@ -834,6 +843,9 @@
     <div class="hero-overlay" aria-hidden="true"></div>
 
     <div class="hero-content">
+      <img src="logos/logo-nav.png" alt="Solace Life"
+           style="height:220px;width:auto;display:block;margin:0 auto 32px;
+                  filter:drop-shadow(0 2px 16px rgba(0,0,0,0.40));" />
       <p class="hero-eyebrow">Founding member access &mdash; first 100 families</p>
       <h1>Leave them something<br><em>to hold onto.</em></h1>
       <p class="hero-sub">
@@ -1082,7 +1094,9 @@
 
   <!-- ── FOOTER ────────────────────────────────────────────────── -->
   <footer>
-    <div class="footer-logo">Solace Life</div>
+    <div class="footer-logo">
+      <img src="logos/logo-stacked.png" alt="Solace Life" />
+    </div>
     <p class="footer-tagline">Leave something behind worth remembering.</p>
     <nav class="footer-links" aria-label="Footer">
       <a href="#">Privacy Policy</a>

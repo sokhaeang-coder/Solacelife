@@ -47,7 +47,7 @@ export const s = StyleSheet.create({
   switchBold:       { color: C.amber, fontWeight: '600' },
 
   // Screen layout
-  screenScroll:     { paddingBottom: 40 },
+  screenScroll:     { paddingBottom: 12 },
 
   // Home hero
   heroWrap:         { alignItems: 'center', paddingTop: 56, paddingBottom: 32, paddingHorizontal: 20 },
@@ -260,7 +260,7 @@ export const s = StyleSheet.create({
                        alignItems: 'center', borderWidth: 1, borderColor: C.mauveDim + '80', gap: 10, position: 'relative' },
   memoryTypeTileDim: { opacity: 0.5 },
   memoryTypeIcon:    { fontSize: 64 },
-  memoryTypeLabel:   { fontSize: 16, fontWeight: '600', color: C.offWhite, textAlign: 'center' },
+  memoryTypeLabel:   { fontSize: 18, fontWeight: '700', color: C.offWhite, textAlign: 'center' },
   comingSoonBadge:   { position: 'absolute', top: 10, right: 10, backgroundColor: C.mauveDim,
                        borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   comingSoonText:    { color: C.grey, fontSize: 11, fontWeight: '600' },

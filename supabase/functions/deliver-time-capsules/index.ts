@@ -21,13 +21,23 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+  // Optional: when called with a specific family_member_id (e.g. from
+  // confirm-family-email immediately after consent is given), only process
+  // deliveries for that one recipient.  When absent, the daily cron path
+  // processes all due deliveries across all consented members.
+  const body = await req.json().catch(() => ({}))
+  const filterMemberId: string | null = body.family_member_id ?? null
+
   // Today's date as YYYY-MM-DD
   const today = new Date().toISOString().split('T')[0]
 
-  // ── 1. Fetch all pending deliveries due today or earlier ──
-  //    Only include recipients who have actively consented.
-  //    pending / declined / revoked / blocked → skip, never deliver.
-  const { data: deliveries, error: fetchError } = await supabase
+  // ── 1. Fetch pending deliveries due today or earlier ──────
+  //    When filterMemberId is set we target one member only (consent
+  //    just granted — deliver any overdue moments immediately).
+  //    Otherwise the daily cron processes everyone due today.
+  //    The consent gate is enforced per-row below, not in the query,
+  //    so the daily path still skips non-consented recipients safely.
+  let query = supabase
     .from('scheduled_deliveries')
     .select(`
       id,
@@ -51,6 +61,12 @@ Deno.serve(async (req) => {
     `)
     .eq('status', 'pending')
     .lte('scheduled_date', today)
+
+  if (filterMemberId) {
+    query = query.eq('family_member_id', filterMemberId)
+  }
+
+  const { data: deliveries, error: fetchError } = await query
 
   if (fetchError) {
     console.error('DB fetch error:', fetchError.message)
@@ -164,7 +180,43 @@ Deno.serve(async (req) => {
 })
 
 
-// ─── Email HTML template ──────────────────────────────────────
+// ─── Sunrise shared layout ────────────────────────────────────
+function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText }: {
+  title: string; headerIcon: string; headerSubtitle: string; bodyHtml: string; footerText: string
+}) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#FFF8F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F5;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td style="background:linear-gradient(160deg,#F06292 0%,#F48A5A 55%,#FFD07A 100%);border-radius:20px 20px 0 0;padding:36px 32px 28px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:40px;line-height:1;">${headerIcon}</p>
+          <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px;">Solace Life</h1>
+          <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);">${headerSubtitle}</p>
+        </td></tr>
+        <tr><td style="background:#fff;border-radius:0 0 20px 20px;padding:32px 32px 28px;border:1px solid #F9D0BB;border-top:none;">
+          ${bodyHtml}
+        </td></tr>
+        <tr><td align="center" style="padding-top:20px;">
+          <p style="margin:0 0 4px;font-size:12px;color:#7A3448;opacity:0.7;">
+            Sent with love via <a href="https://solacelife.ca" style="color:#F06292;text-decoration:none;font-weight:600;">Solace Life</a>
+          </p>
+          <p style="margin:0;font-size:11px;color:#7A3448;opacity:0.5;">${footerText}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+// ─── Email HTML template — Sunrise theme ─────────────────────
 function buildEmailHtml({
   senderName,
   recipientName,
@@ -189,18 +241,14 @@ function buildEmailHtml({
   const formattedDate = new Date(scheduledDate + 'T12:00:00')
     .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
-  // Compute recorded date label + how long ago it was relative to delivery date
-  let timeCapsuleSection = ''
+  let timeCapsuleHtml = ''
   if (recordedDate) {
-    const recorded   = new Date(recordedDate)
-    const delivered  = new Date(scheduledDate + 'T12:00:00')
+    const recorded  = new Date(recordedDate)
+    const delivered = new Date(scheduledDate + 'T12:00:00')
     const formattedRecorded = recorded.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-
-    const msApart    = delivered.getTime() - recorded.getTime()
-    const daysApart  = Math.floor(msApart / (1000 * 60 * 60 * 24))
-    const yearsApart = Math.floor(daysApart / 365)
+    const daysApart   = Math.floor((delivered.getTime() - recorded.getTime()) / (1000 * 60 * 60 * 24))
+    const yearsApart  = Math.floor(daysApart / 365)
     const monthsApart = Math.floor(daysApart / 30)
-
     const timeAgoLabel = yearsApart >= 2  ? `${yearsApart} years`
                        : yearsApart === 1 ? `1 year`
                        : monthsApart >= 2 ? `${monthsApart} months`
@@ -208,199 +256,83 @@ function buildEmailHtml({
                        : daysApart > 0    ? `${daysApart} day${daysApart !== 1 ? 's' : ''}`
                        : 'today'
 
-    timeCapsuleSection = `
-    <tr>
-      <td style="padding-bottom:28px;">
-        <div style="background:#12102A;border-radius:16px;padding:22px 24px;border:1px solid #2A1F4A;">
-          <p style="margin:0 0 16px;font-size:11px;color:#9985BB;font-weight:700;
-                    text-transform:uppercase;letter-spacing:1.5px;text-align:center;">
-            ⏳ Time Capsule
-          </p>
-          <table width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td width="50%" style="text-align:center;padding:10px 12px;">
-                <p style="margin:0 0 6px;font-size:22px;">📅</p>
-                <p style="margin:0 0 4px;font-size:10px;color:#9985BB;font-weight:700;
-                          text-transform:uppercase;letter-spacing:1px;">Recorded</p>
-                <p style="margin:0;font-size:14px;font-weight:700;color:#EEE8F5;line-height:1.4;">
-                  ${formattedRecorded}
-                </p>
-              </td>
-              <td width="50%" style="text-align:center;padding:10px 12px;
-                                      border-left:1px solid #2A1F4A;">
-                <p style="margin:0 0 6px;font-size:22px;">🕊️</p>
-                <p style="margin:0 0 4px;font-size:10px;color:#9985BB;font-weight:700;
-                          text-transform:uppercase;letter-spacing:1px;">Arriving Today</p>
-                <p style="margin:0;font-size:14px;font-weight:700;color:#EEE8F5;line-height:1.4;">
-                  ${formattedDate}
-                </p>
-              </td>
-            </tr>
-          </table>
-          <p style="margin:16px 0 0;font-size:14px;color:#C9A8FF;text-align:center;
-                    font-style:italic;line-height:1.6;">
-            ${senderName} recorded this <strong>${timeAgoLabel} ago</strong> — and kept it waiting just for you.
-          </p>
-        </div>
-      </td>
-    </tr>`
+    timeCapsuleHtml = `
+      <div style="background:#FFF0E8;border-radius:14px;border:1px solid #F9D0BB;padding:18px 20px;margin-bottom:20px;">
+        <p style="margin:0 0 12px;font-size:11px;color:#7A3448;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;text-align:center;">⏳ Time Capsule</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td width="50%" style="text-align:center;padding:8px 12px;">
+              <p style="margin:0 0 4px;font-size:20px;">📅</p>
+              <p style="margin:0 0 3px;font-size:10px;color:#7A3448;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Recorded</p>
+              <p style="margin:0;font-size:13px;font-weight:700;color:#3D1020;">${formattedRecorded}</p>
+            </td>
+            <td width="50%" style="text-align:center;padding:8px 12px;border-left:1px solid #F9D0BB;">
+              <p style="margin:0 0 4px;font-size:20px;">🕊️</p>
+              <p style="margin:0 0 3px;font-size:10px;color:#7A3448;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Arriving Today</p>
+              <p style="margin:0;font-size:13px;font-weight:700;color:#3D1020;">${formattedDate}</p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:13px;color:#7A3448;text-align:center;font-style:italic;line-height:1.6;">
+          ${senderName} recorded this <strong>${timeAgoLabel} ago</strong> — and kept it waiting just for you.
+        </p>
+      </div>`
   }
 
-  const noteSection = personalNote ? `
-    <tr>
-      <td style="padding-bottom:28px;">
-        <div style="background:#2A1F4A;border-radius:14px;padding:22px 24px;border-left:4px solid #C9A8FF;">
-          <p style="margin:0 0 8px;font-size:11px;color:#9985BB;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">
-            Personal Note from ${senderName}
-          </p>
-          <p style="margin:0;font-size:16px;color:#EEE8F5;line-height:1.7;font-style:italic;">
-            &ldquo;${personalNote}&rdquo;
-          </p>
-        </div>
-      </td>
-    </tr>` : ''
+  const noteHtml = personalNote ? `
+    <div style="border-left:3px solid #F06292;background:#FFF0E8;border-radius:0 12px 12px 0;padding:16px 18px;margin-bottom:20px;">
+      <p style="margin:0 0 6px;font-size:11px;color:#7A3448;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">
+        Personal note from ${senderName}
+      </p>
+      <p style="margin:0;font-size:15px;color:#3D1020;line-height:1.7;font-style:italic;">
+        &ldquo;${personalNote}&rdquo;
+      </p>
+    </div>` : ''
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>A memory from ${senderName}</title>
-</head>
-<body style="margin:0;padding:0;background-color:#0E0B1F;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  const bodyHtml = `
+    <p style="margin:0 0 6px;font-size:13px;color:#7A3448;font-style:italic;">Dear ${recipientName},</p>
+    <p style="margin:8px 0 20px;font-size:15px;color:#3D1020;line-height:1.65;">
+      <strong style="color:#F06292;">${senderName}</strong> scheduled something special
+      to reach you on this day — a memory they wanted you to have, arriving right on time.
+    </p>
 
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"
-    style="background-color:#0E0B1F;padding:48px 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" border="0"
-          style="max-width:600px;width:100%;">
+    ${timeCapsuleHtml}
 
-          <!-- Logo / Brand -->
-          <tr>
-            <td align="center" style="padding-bottom:40px;">
-              <p style="margin:0 0 10px;font-size:42px;line-height:1;">🕊️</p>
-              <h1 style="margin:0;font-size:26px;font-weight:700;color:#EEE8F5;letter-spacing:-0.3px;">
-                Solace Life
-              </h1>
-              <p style="margin:10px 0 0;font-size:14px;color:#7B5EA7;">
-                A memory has arrived for you
-              </p>
-            </td>
-          </tr>
+    <div style="background:#FFF0E8;border-radius:14px;border:1px solid #F9D0BB;padding:18px 20px;margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-size:28px;line-height:1;">${memoryTypeIcon}</p>
+      <h2 style="margin:0 0 6px;font-size:18px;font-weight:700;color:#3D1020;">${memoryTitle}</h2>
+      <p style="margin:0;font-size:11px;font-weight:700;color:#7A3448;text-transform:uppercase;letter-spacing:1.5px;">${memoryTypeLabel}</p>
+    </div>
 
-          <!-- Main card -->
-          <tr>
-            <td style="background:linear-gradient(160deg,#1A1535 0%,#231848 100%);
-                        border-radius:24px;padding:40px 36px;
-                        border:1px solid #2A1F4A;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    ${noteHtml}
 
-                <!-- Greeting -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <p style="margin:0 0 6px;font-size:15px;color:#9985BB;">
-                      Dear ${recipientName},
-                    </p>
-                    <p style="margin:0;font-size:18px;color:#EEE8F5;line-height:1.65;">
-                      <strong style="color:#C9A8FF;">${senderName}</strong>
-                      scheduled something special to reach you on this day.
-                      A memory they wanted you to have — arriving right on time.
-                    </p>
-                  </td>
-                </tr>
+    <div style="text-align:center;margin-bottom:14px;">
+      <a href="${webViewUrl}"
+        style="display:inline-block;background:linear-gradient(135deg,#F06292,#F48A5A);
+                color:#fff;text-decoration:none;font-weight:700;
+                font-size:16px;padding:16px 40px;border-radius:50px;">
+        Open Your Memory ›
+      </a>
+    </div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <p style="margin:0 0 10px;font-size:13px;color:#7A3448;">Want to keep all your memories in one place?</p>
+      <a href="https://solacelife.ca"
+        style="display:inline-block;background:transparent;color:#F06292;
+                text-decoration:none;font-weight:600;font-size:13px;
+                padding:10px 24px;border-radius:50px;border:1px solid #F9C4D4;">
+        Download Solace Life — Free ›
+      </a>
+    </div>
+    <p style="margin:0;font-size:12px;color:#7A3448;text-align:center;opacity:0.7;line-height:1.6;">
+      No app needed — open it right in your browser.<br>This memory was sent with love and scheduled to reach you today.
+    </p>
+  `
 
-                <!-- Time capsule timeline (recorded date vs delivery date) -->
-                ${timeCapsuleSection}
-
-                <!-- Memory card -->
-                <tr>
-                  <td style="padding-bottom:28px;">
-                    <div style="background:#0E0B1F;border-radius:16px;padding:26px 24px;
-                                border:1px solid #2A1F4A;">
-                      <p style="margin:0 0 10px;font-size:34px;line-height:1;">${memoryTypeIcon}</p>
-                      <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#EEE8F5;
-                                  letter-spacing:-0.2px;">
-                        ${memoryTitle}
-                      </h2>
-                      <p style="margin:0;font-size:12px;font-weight:700;color:#7B5EA7;
-                                text-transform:uppercase;letter-spacing:1.5px;">
-                        ${memoryTypeLabel}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Personal note (if present) -->
-                ${noteSection}
-
-                <!-- Primary CTA — web viewer (no app required) -->
-                <tr>
-                  <td align="center" style="padding-bottom:16px;">
-                    <a href="${webViewUrl}"
-                      style="display:inline-block;
-                              background:linear-gradient(135deg,#F5CEAA 0%,#E8A87C 50%,#C07840 100%);
-                              color:#0E0B1F;text-decoration:none;font-weight:700;
-                              font-size:16px;padding:18px 44px;border-radius:50px;
-                              letter-spacing:0.2px;">
-                      Open Your Memory ›
-                    </a>
-                  </td>
-                </tr>
-
-                <!-- Secondary CTA — app download -->
-                <tr>
-                  <td align="center" style="padding-bottom:28px;">
-                    <p style="margin:0 0 10px;font-size:13px;color:#7B5EA7;">
-                      Want to keep all your memories in one place?
-                    </p>
-                    <a href="https://solacelife.ca"
-                      style="display:inline-block;
-                              background:transparent;
-                              color:#C9A8FF;text-decoration:none;font-weight:600;
-                              font-size:14px;padding:12px 32px;border-radius:50px;
-                              border:1.5px solid #4A3D60;letter-spacing:0.2px;">
-                      Download the Solace Life App — Free
-                    </a>
-                  </td>
-                </tr>
-
-                <!-- Footer note -->
-                <tr>
-                  <td>
-                    <p style="margin:0;font-size:13px;color:#4A3D60;line-height:1.6;
-                              text-align:center;">
-                      This memory was sent with love and scheduled to reach you today.<br>
-                      No app needed — open it right in your browser.
-                    </p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-
-          <!-- Email footer -->
-          <tr>
-            <td align="center" style="padding-top:36px;">
-              <p style="margin:0 0 6px;font-size:12px;color:#4A3D60;">
-                Sent with love via
-                <a href="https://solacelife.ca"
-                  style="color:#7B5EA7;text-decoration:none;font-weight:600;">
-                  Solace Life
-                </a>
-              </p>
-              <p style="margin:0;font-size:11px;color:#2A1F4A;">
-                You received this because a loved one chose to share a memory with you.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>`
+  return sunriseEmail({
+    title: `A memory from ${senderName} has arrived`,
+    headerIcon: '🌸',
+    headerSubtitle: 'A memory has arrived for you',
+    bodyHtml,
+    footerText: 'You received this because a loved one chose to share a memory with you.',
+  })
 }

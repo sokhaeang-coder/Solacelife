@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Text, View, TouchableOpacity, ScrollView, Animated, StatusBar } from 'react-native'
+import { Text, View, TouchableOpacity, ScrollView, Animated, StatusBar, Image } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { C, SKY } from '../../lib/constants'
 import { s } from '../../lib/styles'
+
+const LOGO_NAV = require('../../assets/logos/logo-nav.png')
 
 export default function OnboardingTrackScreen({ navigation }: any) {
   const [selected, setSelected] = useState<'remembrance' | 'living_legacy' | null>(null)
@@ -19,13 +21,13 @@ export default function OnboardingTrackScreen({ navigation }: any) {
         <Animated.View style={{ opacity: fadeAnim }}>
 
           <View style={s.onboardHeader}>
-            <Text style={s.onboardLogoText}>♡</Text>
+            <Image source={LOGO_NAV} style={{ height: 28, width: 120, resizeMode: 'contain' }} />
             <Text style={s.onboardStep}>Step 1 of 4</Text>
           </View>
 
           <Text style={s.onboardTitle}>Your love, delivered.</Text>
           <Text style={s.onboardSubtitle}>
-            Choose how you'd like to leave your mark — for the people who matter most.
+            Choose how you'd like to share your story — for the people who matter most.
           </Text>
 
           {/* Track A card */}
@@ -38,7 +40,7 @@ export default function OnboardingTrackScreen({ navigation }: any) {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 }}>
               <Text style={{ fontSize: 28 }}>🕊️</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[s.trackCardTitle, { color: C.amberLight }]}>The Remembrance Path</Text>
+                <Text style={[s.trackCardTitle, { color: C.amberLight }]}>The Legacy Path</Text>
                 <Text style={[s.trackCardBadge, { color: C.amber, borderColor: C.amberDim }]}>Your words · Your voice · Your legacy</Text>
               </View>
               <View style={[s.trackRadio, selected === 'remembrance' && { borderColor: C.amberLight, backgroundColor: C.amberLight }]}>
@@ -48,7 +50,7 @@ export default function OnboardingTrackScreen({ navigation }: any) {
             <Text style={[s.trackCardDesc, { color: C.offWhite }]}>
               Leave love letters, video messages, and recorded stories — delivered to your family on the days that mean the most.
             </Text>
-            {['Time capsule messages for any occasion', 'Voice memos & video messages', 'Written stories & photo albums', 'Encrypted vault for important documents', 'Family vault access when the time comes'].map((f, i) => (
+            {['Time capsule messages for any occasion', 'Voice memos & video messages', 'Written stories & photo albums', 'Encrypted vault for important documents', 'Family access when they need it most'].map((f, i) => (
               <View key={i} style={s.trackFeatureRow}>
                 <Text style={{ color: C.amber, fontSize: 13, width: 16 }}>✓</Text>
                 <Text style={{ color: C.grey, fontSize: 13, flex: 1 }}>{f}</Text>
@@ -67,16 +69,16 @@ export default function OnboardingTrackScreen({ navigation }: any) {
               <Text style={{ fontSize: 28 }}>✨</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[s.trackCardTitle, { color: C.accent }]}>The Living Legacy Path</Text>
-                <Text style={[s.trackCardBadge, { color: C.accent, borderColor: C.mauveDim }]}>Everything in Remembrance + AI presence</Text>
+                <Text style={[s.trackCardBadge, { color: C.accent, borderColor: C.mauveDim }]}>Everything in Legacy + AI presence</Text>
               </View>
               <View style={[s.trackRadio, selected === 'living_legacy' && { borderColor: C.accent, backgroundColor: C.accent }]}>
                 {selected === 'living_legacy' && <View style={s.trackRadioInner} />}
               </View>
             </View>
             <Text style={[s.trackCardDesc, { color: C.offWhite }]}>
-              Everything in Remembrance, plus an AI avatar your family can have conversations with — trained on your personality, values, and stories.
+              Everything in Legacy, plus an AI avatar your family can have conversations with — trained on your personality, values, and stories.
             </Text>
-            {['Everything in Remembrance', 'AI avatar trained on your personality', 'Family can send messages to your avatar', 'Enhanced voice & personality (coming soon)'].map((f, i) => (
+            {['Everything in Legacy', 'AI avatar trained on your personality', 'Family can send messages to your avatar', 'Enhanced voice & personality (coming soon)'].map((f, i) => (
               <View key={i} style={s.trackFeatureRow}>
                 <Text style={{ color: C.accent, fontSize: 13, width: 16 }}>✓</Text>
                 <Text style={{ color: C.grey, fontSize: 13, flex: 1 }}>{f}</Text>

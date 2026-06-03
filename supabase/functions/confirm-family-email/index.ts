@@ -118,6 +118,21 @@ Deno.serve(async (req) => {
 
     console.log(`Consent accepted: ${member.email} (${member.name})`)
 
+    // ── Trigger immediate delivery of any overdue moments ──────────
+    // The daily cron only runs once a day. Now that consent is given,
+    // any moments whose scheduled_date has already passed should fire
+    // right now — not wait until tomorrow. deliver-time-capsules
+    // re-checks consent internally so this call is safe and idempotent.
+    // Fire-and-forget (don't await) so the confirm page loads instantly.
+    fetch(`${SUPABASE_URL}/functions/v1/deliver-time-capsules`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ family_member_id: member.id }),
+    }).catch(e => console.warn('Immediate delivery trigger failed (non-fatal):', e))
+
     return new Response(
       JSON.stringify({ success: true, action: 'accept', name: member.name, senderName }),
       { status: 200, headers }

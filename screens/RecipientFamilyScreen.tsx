@@ -117,7 +117,7 @@ export default function RecipientFamilyScreen({ navigation }: any) {
         lastDeliveredAt:   statsMap[row.id]?.lastAt ?? null,
       }))
 
-      setSenders(cards)
+      setSenders([...cards].sort((a, b) => (a.senderName || '').localeCompare(b.senderName || '')))
     } catch (e) {
       console.warn('RecipientFamily load error:', e)
     } finally {

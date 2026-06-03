@@ -152,7 +152,6 @@ export default function SettingsScreen({ navigation }: any) {
   const [fullName, setFullName]             = useState('')
   const [avatarUrl, setAvatarUrl]           = useState<string | null>(null)
   const [plan, setPlan]                     = useState<string>('free')
-  const [vaultReleased, setVaultReleased]   = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
   const [checkinProfile, setCheckinProfile] = useState<any>(null)
 
@@ -165,6 +164,9 @@ export default function SettingsScreen({ navigation }: any) {
   const [editPhotoUri, setEditPhotoUri]       = useState<string | null>(null)
   const [profileSaving, setProfileSaving]     = useState(false)
   const [profileMsg, setProfileMsg]           = useState('')
+  const [memoriesCount, setMemoriesCount]     = useState(0)
+  const [familyCount, setFamilyCount]         = useState(0)
+  const [vaultCount, setVaultCount]           = useState(0)
 
   // ── Occasions / celebrations ──
   const [userOccasionKeys, setUserOccasionKeys]   = useState<string[]>([])
@@ -215,7 +217,8 @@ export default function SettingsScreen({ navigation }: any) {
     setUserEmail(user.email || '')
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (data) {
-      setFullName(data.full_name || '')
+      // Fall back to auth user_metadata if profiles.full_name hasn't been saved yet
+      setFullName(data.full_name || user.user_metadata?.full_name || '')
       // Resolve avatar: new records store a storage path; legacy records store a signed URL
       if (data.avatar_url) {
         if (data.avatar_url.startsWith('http')) {
@@ -231,11 +234,19 @@ export default function SettingsScreen({ navigation }: any) {
         setAvatarUrl(null)
       }
       setPlan(data.plan || 'free')
-      setVaultReleased(data.vault_released || false)
       setCheckinProfile(data)
       setShowOccasionSuggestions(data.show_occasion_suggestions ?? true)
       setProfilePhone(data.phone || '')
     }
+    // Fetch activity counts for progress ring + milestone card
+    const [mRes, fRes, vRes] = await Promise.all([
+      supabase.from('memories').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('family_members').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('vault_items').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    ])
+    setMemoriesCount(mRes.count ?? 0)
+    setFamilyCount(fRes.count ?? 0)
+    setVaultCount(vRes.count ?? 0)
     setProfileLoading(false)
   }
 
@@ -405,6 +416,36 @@ export default function SettingsScreen({ navigation }: any) {
 
   async function handleSignOut() { await supabase.auth.signOut() }
 
+  // ── Support / issue reporting ──────────────────────────────────────────────
+  //  Opens the user's mail app with diagnostic context pre-filled so Sokha
+  //  gets actionable reports instead of blank "it's broken" messages.
+  function openSupportReport() {
+    const version     = '1.0.0'
+    const platform    = Platform.OS
+    const accountType = checkinProfile?.account_type || 'unknown'
+    const planLabel   = subscriptionTier || plan || 'free'
+    const subStatus   = subscriptionStatus || 'inactive'
+
+    const subject = encodeURIComponent(
+      `[Solace Life Issue] v${version} · ${platform}`
+    )
+    const body = encodeURIComponent(
+      `App Version: ${version}\n` +
+      `Platform: ${platform}\n` +
+      `Account Type: ${accountType}\n` +
+      `Plan: ${planLabel} (${subStatus})\n` +
+      `Email: ${userEmail}\n` +
+      `\n---\nDescribe what happened:\n\n`
+    )
+    Linking.openURL(`mailto:sokhaeang@gmail.com?subject=${subject}&body=${body}`)
+  }
+
+  function openFeedback() {
+    const subject = encodeURIComponent('[Solace Life Feedback]')
+    const body    = encodeURIComponent('Hi Sokha,\n\n')
+    Linking.openURL(`mailto:sokhaeang@gmail.com?subject=${subject}&body=${body}`)
+  }
+
   // ── Manage Senders (G2 view) ─────────────────────────────────────────────
   type SenderEntry = {
     id: string
@@ -543,55 +584,99 @@ export default function SettingsScreen({ navigation }: any) {
   }
   const badge = planBadge(subscriptionTier || plan, subscriptionStatus)
 
+  // ── Profile completion (0–100 in steps of 20) ──────────────────
+  const profileCompletion = [
+    !!fullName,
+    !!userEmail,
+    !!profilePhone,
+    !!avatarUrl,
+    familyCount > 0,
+  ].filter(Boolean).length * 20
+
+  const openEditModal = () => {
+    setEditName(fullName); setEditEmail(userEmail); setEditPhone(profilePhone)
+    setEditPhotoUri(null); setProfileMsg(''); setShowEditProfile(true)
+  }
+
   return (
     <ScreenWrap>
       <ScrollView contentContainerStyle={s.screenScroll} showsVerticalScrollIndicator={true}>
 
-        {/* ── Rich Profile Card ── */}
-        <View style={{ alignItems: 'center', paddingTop: 56, paddingBottom: 32, paddingHorizontal: 20 }}>
-          <TouchableOpacity
-            onPress={() => { setEditName(fullName); setEditPhotoUri(null); setProfileMsg(''); setShowEditProfile(true) }}
-            activeOpacity={0.8}
-            style={{ marginBottom: 24 }}>
-            <View style={{ width: 210, height: 210, position: 'relative' }}>
-              {avatarUrl ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={{ width: 210, height: 210, borderRadius: 105, borderWidth: 2.5, borderColor: C.accent + '66' }}
-                />
-              ) : (
-                <LinearGradient
-                  colors={[C.mauveDim, C.bg3]}
-                  style={{ width: 210, height: 210, borderRadius: 105, borderWidth: 2, borderColor: C.mauve + '80', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 84 }}>👤</Text>
-                </LinearGradient>
-              )}
-              <View style={{
-                position: 'absolute', bottom: 6, right: 6,
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
-                borderWidth: 2.5, borderColor: C.bg1,
-              }}>
-                <Text style={{ fontSize: 20 }}>✏️</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
+        {/* ── Profile Card — Option 2: side-by-side XL avatar ── */}
+        <View style={{ paddingTop: 48, paddingBottom: 24, paddingHorizontal: 20 }}>
           {profileLoading ? (
-            <ActivityIndicator color={C.accent} style={{ marginTop: 16 }} />
+            <ActivityIndicator color={C.accent} style={{ marginVertical: 32 }} />
           ) : (
-            <>
-              <Text style={{ color: C.white, fontSize: 34, fontWeight: '800', marginBottom: 6 }}>
-                {fullName || 'Your Name'}
-              </Text>
-              <Text style={{ color: C.grey, fontSize: 15, marginBottom: 12 }}>{userEmail}</Text>
-              <TouchableOpacity
-                onPress={() => { setEditName(fullName); setEditEmail(userEmail); setEditPhone(profilePhone); setEditPhotoUri(null); setProfileMsg(''); setShowEditProfile(true) }}
-                activeOpacity={0.7}
-                style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: C.grey + '55' }}>
-                <Text style={{ color: C.grey, fontSize: 14 }}>Edit Profile</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+
+              {/* Avatar — 140px with gradient ring + % badge */}
+              <TouchableOpacity onPress={openEditModal} activeOpacity={0.85} style={{ position: 'relative', flexShrink: 0 }}>
+                <LinearGradient
+                  colors={['#F06292', '#F48A5A', '#FFD07A']}
+                  start={{ x: 0, y: 1 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ width: 140, height: 140, borderRadius: 70, padding: 3 }}>
+                  <View style={{ flex: 1, borderRadius: 67, overflow: 'hidden', backgroundColor: C.bg1 }}>
+                    {avatarUrl ? (
+                      <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                      <LinearGradient
+                        colors={[C.mauveDim, C.bg3]}
+                        style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 56 }}>👤</Text>
+                      </LinearGradient>
+                    )}
+                  </View>
+                </LinearGradient>
+                {/* Completion badge */}
+                <View style={{
+                  position: 'absolute', bottom: 0, right: -2,
+                  backgroundColor: C.bg1, borderRadius: 12,
+                  paddingHorizontal: 7, paddingVertical: 3,
+                  borderWidth: 1, borderColor: 'rgba(255,208,122,0.5)',
+                }}>
+                  <Text style={{ color: '#FFD07A', fontSize: 10, fontWeight: '800' }}>{profileCompletion}%</Text>
+                </View>
               </TouchableOpacity>
-            </>
+
+              {/* Info stack */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.white, fontSize: 22, fontWeight: '800', letterSpacing: -0.4, marginBottom: 4 }}>
+                  {fullName || 'Your Name'}
+                </Text>
+                <Text style={{ color: C.grey, fontSize: 13, marginBottom: 12 }}>{userEmail}</Text>
+
+                {/* Completion bar */}
+                <View style={{ marginBottom: 4 }}>
+                  <Text style={{ color: '#FFD07A', fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
+                    ✦ {profileCompletion}% complete
+                  </Text>
+                  <View style={{ height: 5, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                    <View style={{
+                      height: 5, borderRadius: 4,
+                      width: `${profileCompletion}%` as any,
+                      backgroundColor: '#F06292',
+                    }} />
+                  </View>
+                </View>
+
+                {/* Edit pill */}
+                <TouchableOpacity
+                  onPress={openEditModal}
+                  activeOpacity={0.75}
+                  style={{
+                    marginTop: 12, alignSelf: 'flex-start',
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    backgroundColor: 'rgba(240,98,146,0.12)',
+                    borderRadius: 20, borderWidth: 1,
+                    borderColor: 'rgba(240,98,146,0.28)',
+                    paddingHorizontal: 14, paddingVertical: 7,
+                  }}>
+                  <Text style={{ color: '#F06292', fontSize: 13, fontWeight: '700' }}>✏️  Edit Profile</Text>
+                </TouchableOpacity>
+              </View>
+
+            </View>
           )}
         </View>
 
@@ -600,7 +685,7 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={[s.trackPill, { backgroundColor: track === 'living_legacy' ? C.mauveDim : '#3A200A22', borderColor: track === 'living_legacy' ? C.accent + '66' : C.amberDim + '66' }]}>
               <Text style={{ fontSize: 16 }}>{track === 'living_legacy' ? '✨' : '🕊️'}</Text>
               <Text style={{ color: track === 'living_legacy' ? C.accent : C.amberLight, fontSize: 13, fontWeight: '700', marginLeft: 8 }}>
-                {track === 'living_legacy' ? 'Living Legacy Path' : 'Remembrance Path'}
+                {track === 'living_legacy' ? 'Living Legacy Path' : 'Legacy Path'}
               </Text>
             </View>
           </View>
@@ -626,31 +711,8 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
               </LinearGradient>
             </View>
-          ) : (
-            <TouchableOpacity onPress={() => setShowUpgrade(true)} activeOpacity={0.85} style={{ marginHorizontal: 20, marginBottom: 20 }}>
-              <LinearGradient colors={[C.amberDim, C.amber]} style={s.upgradeBanner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <View style={s.upgradeBannerLeft}>
-                  <Text style={s.upgradeBannerIcon}>💌</Text>
-                  <View>
-                    <Text style={s.upgradeBannerTitle}>Unlock All Messages</Text>
-                    <Text style={s.upgradeBannerSub}>Video, voice & unlimited time capsules</Text>
-                  </View>
-                </View>
-                <Text style={{ color: C.bg1, fontSize: 22, fontWeight: '700' }}>›</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )
+          ) : null
         )}
-
-        <View style={s.tipCard}>
-          <Text style={s.tipTitle}>🔐 Vault Release</Text>
-          <Text style={s.tipBody}>
-            When activated by your trusted contact, your family gains access to your Vault and Moments.
-          </Text>
-          <Text style={{ color: vaultReleased ? C.success : C.grey, fontSize: 15, marginTop: 12, fontWeight: '600' }}>
-            {vaultReleased ? '● Active — Vault is open' : '● Not yet released'}
-          </Text>
-        </View>
 
         {/* ── My Celebrations ── */}
         <View style={s.sectionSpacer} />
@@ -756,9 +818,21 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={s.chevron}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.listRow} activeOpacity={0.75}>
+        <TouchableOpacity style={s.listRow} activeOpacity={0.75} onPress={openSupportReport}>
+          <View style={s.listIconWrap}><Text style={s.listIcon}>🚨</Text></View>
+          <View style={s.listInfo}>
+            <Text style={s.listLabel}>Something Not Right?</Text>
+            <Text style={s.listDesc}>Report an issue — Sokha reads every message</Text>
+          </View>
+          <Text style={s.chevron}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.listRow} activeOpacity={0.75} onPress={openFeedback}>
           <View style={s.listIconWrap}><Text style={s.listIcon}>💬</Text></View>
-          <View style={s.listInfo}><Text style={s.listLabel}>Help & Support</Text></View>
+          <View style={s.listInfo}>
+            <Text style={s.listLabel}>Share Feedback</Text>
+            <Text style={s.listDesc}>Ideas, suggestions, or a kind word</Text>
+          </View>
           <Text style={s.chevron}>›</Text>
         </TouchableOpacity>
 
@@ -784,38 +858,41 @@ export default function SettingsScreen({ navigation }: any) {
           </>
         )}
 
-        {/* ── Testing ── */}
-        <View style={s.sectionSpacer} />
-        <View style={s.sectionRow}><Text style={[s.sectionTitle, { color: C.amber }]}>🧪 Testing</Text></View>
-
-        <View style={[s.listRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
-          <Text style={s.listLabel}>Trigger Delivery Now</Text>
-          <Text style={[s.listDesc, { marginTop: 0 }]}>
-            Sends all pending deliveries scheduled for today or earlier. Use this after scheduling a moment with today's date to receive the email immediately.
-          </Text>
-          <TouchableOpacity
-            onPress={handleTriggerDelivery}
-            disabled={triggeringDelivery}
-            activeOpacity={0.8}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 8,
-              backgroundColor: C.amber, borderRadius: 10,
-              paddingVertical: 10, paddingHorizontal: 18, alignSelf: 'flex-start',
-              opacity: triggeringDelivery ? 0.6 : 1,
-            }}>
-            {triggeringDelivery
-              ? <ActivityIndicator color="#000" size="small" />
-              : <Text style={{ fontSize: 15 }}>📬</Text>}
-            <Text style={{ color: '#000', fontWeight: '700', fontSize: 14 }}>
-              {triggeringDelivery ? 'Sending…' : 'Send Now'}
-            </Text>
-          </TouchableOpacity>
-          {deliveryResult ? (
-            <Text style={{ fontSize: 13, color: deliveryResult.startsWith('✅') ? C.accent : C.error, marginTop: 2 }}>
-              {deliveryResult}
-            </Text>
-          ) : null}
-        </View>
+        {/* ── Testing — dev builds only ── */}
+        {__DEV__ && (
+          <>
+            <View style={s.sectionSpacer} />
+            <View style={s.sectionRow}><Text style={[s.sectionTitle, { color: C.amber }]}>🧪 Testing</Text></View>
+            <View style={[s.listRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+              <Text style={s.listLabel}>Trigger Delivery Now</Text>
+              <Text style={[s.listDesc, { marginTop: 0 }]}>
+                Sends all pending deliveries scheduled for today or earlier. Use this after scheduling a moment with today's date to receive the email immediately.
+              </Text>
+              <TouchableOpacity
+                onPress={handleTriggerDelivery}
+                disabled={triggeringDelivery}
+                activeOpacity={0.8}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  backgroundColor: C.amber, borderRadius: 10,
+                  paddingVertical: 10, paddingHorizontal: 18, alignSelf: 'flex-start',
+                  opacity: triggeringDelivery ? 0.6 : 1,
+                }}>
+                {triggeringDelivery
+                  ? <ActivityIndicator color="#000" size="small" />
+                  : <Text style={{ fontSize: 15 }}>📬</Text>}
+                <Text style={{ color: '#000', fontWeight: '700', fontSize: 14 }}>
+                  {triggeringDelivery ? 'Sending…' : 'Send Now'}
+                </Text>
+              </TouchableOpacity>
+              {deliveryResult ? (
+                <Text style={{ fontSize: 13, color: deliveryResult.startsWith('✅') ? C.accent : C.error, marginTop: 2 }}>
+                  {deliveryResult}
+                </Text>
+              ) : null}
+            </View>
+          </>
+        )}
 
         <View style={s.sectionSpacer} />
         <TouchableOpacity onPress={handleSignOut} activeOpacity={0.82} style={{ marginHorizontal: 16, marginVertical: 4 }}>
@@ -1212,7 +1289,8 @@ export default function SettingsScreen({ navigation }: any) {
 
       {/* ── Manage Senders Modal (G2 list view) ── */}
       <Modal visible={showManageSenders} transparent animationType="slide" onRequestClose={() => setShowManageSenders(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <TouchableOpacity style={{ flex: 1, justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowManageSenders(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={{ maxHeight: '90%', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={{ padding: 24 }}>
 
@@ -1295,12 +1373,14 @@ export default function SettingsScreen({ navigation }: any) {
 
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Sender Action Modal (revoke / block / restore) ── */}
       <Modal visible={showSenderActionModal} transparent animationType="slide" onRequestClose={() => setShowSenderActionModal(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <TouchableOpacity style={{ flex: 1, justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowSenderActionModal(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={{ padding: 24 }}>
 
@@ -1411,12 +1491,14 @@ export default function SettingsScreen({ navigation }: any) {
 
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Plan Upgrade Modal (v4 — warm gradient) ── */}
       <Modal visible={showUpgrade} transparent animationType="slide" onRequestClose={() => setShowUpgrade(false)}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowUpgrade(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={[s.modalSheet, { maxHeight: '96%' }]}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '96%' }]}>
 
@@ -1600,8 +1682,8 @@ export default function SettingsScreen({ navigation }: any) {
                     💛 Your love keeps showing up
                   </Text>
                   <Text style={{ color: '#7A3448', fontSize: 13, lineHeight: 19 }}>
-                    When your vault is released to your family, Solace keeps everything running — no interruptions. Every paid plan includes a{' '}
-                    <Text style={{ color: '#3D1020', fontWeight: '600' }}>180-day protected window</Text> so your scheduled messages arrive exactly as you planned. Your family receives everything you prepared for them. They never touch a billing screen.
+                    If your vault is ever shared with your family, Solace keeps everything running — no interruptions. Every paid plan includes a{' '}
+                    <Text style={{ color: '#3D1020', fontWeight: '600' }}>180-day protected window</Text> so your scheduled messages arrive exactly as you planned. Your family gets everything you prepared for them. They never touch a billing screen.
                   </Text>
                 </View>
 
@@ -1612,7 +1694,8 @@ export default function SettingsScreen({ navigation }: any) {
               </ScrollView>
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
     </ScreenWrap>

@@ -244,12 +244,20 @@ export const OCCASIONS_MAP: Record<string, Occasion> =
 const UNIVERSAL_OCCASION_KEYS = ['birthday', 'christmas', 'new_year', 'just_because']
 
 const RELATIONSHIP_OCCASION_KEYS: Record<string, string[]> = {
-  Spouse:  ['anniversary', 'valentines', 'mothers_day', 'fathers_day', 'thanksgiving'],
+  Husband: ['anniversary', 'valentines', 'fathers_day', 'thanksgiving', 'christmas', 'new_year'],
+  Wife:    ['anniversary', 'valentines', 'mothers_day', 'thanksgiving', 'christmas', 'new_year'],
+  Partner: ['anniversary', 'valentines', 'thanksgiving', 'christmas', 'new_year'],
   Child:   ['graduation', 'personal', 'thanksgiving'],
-  Parent:  ['mothers_day', 'fathers_day', 'thanksgiving'],
-  Sibling: ['raksha_bandhan', 'personal'],
+  Mother:  ['mothers_day', 'birthday', 'christmas', 'new_year', 'just_because', 'thanksgiving'],
+  Father:  ['fathers_day', 'birthday', 'christmas', 'new_year', 'just_because', 'thanksgiving'],
+  Brother: ['raksha_bandhan', 'personal', 'birthday', 'christmas', 'new_year'],
+  Sister:  ['raksha_bandhan', 'valentines', 'personal', 'birthday', 'christmas', 'new_year'],
   Friend:  ['valentines', 'personal'],
   Other:   ['personal'],
+  // Backward compatibility — existing DB rows with old values still get suggestions
+  Spouse:  ['anniversary', 'valentines', 'mothers_day', 'fathers_day', 'thanksgiving'],
+  Parent:  ['mothers_day', 'fathers_day', 'thanksgiving'],
+  Sibling: ['raksha_bandhan', 'personal'],
 }
 
 export function getSuggestedOccasionKeys(
@@ -301,33 +309,131 @@ export function getUpcomingOccasions(
   return results.sort((a, b) => a.daysUntil - b.daysUntil)
 }
 
+// ── Occasion → relevant relationships (for name injection) ────────────────────
+// Lists which family relationships are most meaningful for each occasion key.
+// First match wins — priority order matters.
+const OCCASION_RELATIONSHIPS: Record<string, string[]> = {
+  valentines:      ['Husband', 'Wife', 'Partner', 'Spouse', 'Sister', 'Friend'],
+  anniversary:     ['Husband', 'Wife', 'Partner', 'Spouse'],
+  mothers_day:     ['Mother', 'Parent', 'Wife', 'Spouse'],
+  fathers_day:     ['Father', 'Parent', 'Husband', 'Spouse'],
+  raksha_bandhan:  ['Brother', 'Sister', 'Sibling'],
+  graduation:      ['Child'],
+  birthday:        ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling', 'Friend'],
+  christmas:       ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling', 'Friend'],
+  new_year:        ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling', 'Friend'],
+  thanksgiving:    ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent'],
+  hanukkah:        ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling'],
+  diwali:          ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling'],
+  eid_fitr:        ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling'],
+  eid_adha:        ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling'],
+  lunar_new_year:  ['Husband', 'Wife', 'Partner', 'Spouse', 'Child', 'Mother', 'Father', 'Parent', 'Brother', 'Sister', 'Sibling'],
+}
+
+// Personalized nudge copy — uses {name} when a family member is matched.
+// Keys must map 1-to-1 with occasion keys where name injection makes sense.
+const PERSONALIZED_NUDGE: Record<string, {
+  today: (n: string) => string
+  tomorrow: (n: string) => string
+  week: (n: string, d: number) => string
+  month: (n: string) => string
+  general: (n: string) => string
+}> = {
+  valentines: {
+    today:   n => `Today is Valentine's Day — have you sent something to ${n} yet?`,
+    tomorrow: n => `Valentine's Day is tomorrow — ${n} would love to hear from you`,
+    week:    (n, d) => `Valentine's Day is in ${d} days — leave a love note for ${n} before the moment passes`,
+    month:   n => `Valentine's Day is coming — send something special to ${n}`,
+    general: n => `Valentine's Day is on its way — ${n} would treasure a message from you`,
+  },
+  anniversary: {
+    today:   n => `Today is your anniversary with ${n} — have they heard from you?`,
+    tomorrow: n => `Your anniversary with ${n} is tomorrow — leave them a message tonight`,
+    week:    (n, d) => `Your anniversary with ${n} is in ${d} days — start something meaningful now`,
+    month:   n => `Your anniversary with ${n} is coming — leave a message that says what words on the day never quite capture`,
+    general: n => `An anniversary with ${n} is on the horizon — the best messages take a little time`,
+  },
+  mothers_day: {
+    today:   n => `Today is Mother's Day — has ${n} heard from you?`,
+    tomorrow: n => `Mother's Day is tomorrow — leave something for ${n} before the day arrives`,
+    week:    (n, d) => `Mother's Day is in ${d} days — ${n} would treasure a message from you`,
+    month:   n => `Mother's Day is coming — the most important messages are the ones we mean to send to ${n} but never do`,
+    general: n => `Mother's Day is on its way — leave something for ${n} before the moment passes`,
+  },
+  fathers_day: {
+    today:   n => `Today is Father's Day — has ${n} heard from you?`,
+    tomorrow: n => `Father's Day is tomorrow — leave a message for ${n} tonight`,
+    week:    (n, d) => `Father's Day is in ${d} days — ${n} would love to hear from you`,
+    month:   n => `Father's Day is coming — leave ${n} a message before the day sneaks up on you`,
+    general: n => `Father's Day is on its way — ${n} deserves to hear how much they mean to you`,
+  },
+  raksha_bandhan: {
+    today:   n => `Today is Raksha Bandhan — have you left something for ${n}?`,
+    tomorrow: n => `Raksha Bandhan is tomorrow — leave a message for ${n} tonight`,
+    week:    (n, d) => `Raksha Bandhan is in ${d} days — leave something for ${n} before the moment passes`,
+    month:   n => `Raksha Bandhan is coming — a perfect time to record something for ${n}`,
+    general: n => `Raksha Bandhan is on its way — ${n} would treasure a message from you`,
+  },
+  graduation: {
+    today:   n => `Today is ${n}'s big day — have they heard from you?`,
+    tomorrow: n => `${n}'s graduation is tomorrow — leave them something to carry forward`,
+    week:    (n, d) => `${n}'s graduation is in ${d} days — leave something they'll keep forever`,
+    month:   n => `${n} is reaching a milestone — don't let it pass without leaving them something to carry forward`,
+    general: n => `${n} has a big moment coming — the best messages take a little time to write`,
+  },
+}
+
+// ── Find the best-matching family member name for an occasion ─────────────────
+export function findMemberForOccasion(
+  occasionKey: string,
+  familyMembers: { name: string; relationship: string }[],
+): string | null {
+  const preferred = OCCASION_RELATIONSHIPS[occasionKey]
+  if (!preferred || familyMembers.length === 0) return null
+  for (const rel of preferred) {
+    const match = familyMembers.find(m => m.relationship === rel)
+    if (match) return match.name
+  }
+  return null
+}
+
 // ── Proximity-aware nudge builder ─────────────────────────────────────────────
 // Returns a HomeScreen nudge object for the closest upcoming occasion.
 // Tone escalates as the occasion approaches.
+// Pass familyMembers to enable name-personalised copy.
 
-export function buildOccasionNudge(upcoming: UpcomingOccasion): {
+export function buildOccasionNudge(
+  upcoming: UpcomingOccasion,
+  familyMembers: { name: string; relationship: string }[] = [],
+): {
   icon: string; q: string; cta: string; screen: string
 } {
   const { occasion, daysUntil } = upcoming
   const label = occasion.label
+  const name  = findMemberForOccasion(occasion.key, familyMembers)
+  const tmpl  = name ? PERSONALIZED_NUDGE[occasion.key] : null
 
   let q: string
-  if (daysUntil === 0) {
-    q = `Today is ${label} — have the people you love heard from you?`
-  } else if (daysUntil === 1) {
-    q = `${label} is tomorrow — is there a message waiting to be sent?`
-  } else if (daysUntil <= 7) {
-    q = `${label} is in ${daysUntil} days — the people who matter most deserve to hear from you`
-  } else if (daysUntil <= 30) {
-    q = occasion.familyNudge
+  if (tmpl && name) {
+    if      (daysUntil === 0) q = tmpl.today(name)
+    else if (daysUntil === 1) q = tmpl.tomorrow(name)
+    else if (daysUntil <= 7)  q = tmpl.week(name, daysUntil)
+    else if (daysUntil <= 30) q = tmpl.month(name)
+    else                      q = tmpl.general(name)
   } else {
-    q = `${label} is coming up — a perfect time to leave a message for someone you love`
+    if      (daysUntil === 0) q = `Today is ${label} — have the people you love heard from you?`
+    else if (daysUntil === 1) q = `${label} is tomorrow — is there a message waiting to be sent?`
+    else if (daysUntil <= 7)  q = `${label} is in ${daysUntil} days — the people who matter most deserve to hear from you`
+    else if (daysUntil <= 30) q = occasion.familyNudge
+    else                      q = `${label} is coming up — a perfect time to leave a message for someone you love`
   }
 
   const cta =
-    daysUntil <= 7  ? 'Leave a message before the moment passes' :
-    daysUntil <= 30 ? 'Record something special for someone you love' :
-                     'Start early — the best messages take a little time'
+    name && daysUntil <= 7  ? `Leave ${name} a message before the moment passes` :
+    daysUntil <= 7          ? 'Leave a message before the moment passes' :
+    name && daysUntil <= 30 ? `Record something special for ${name}` :
+    daysUntil <= 30         ? 'Record something special for someone you love' :
+                              'Start early — the best messages take a little time'
 
   return { icon: occasion.icon, q, cta, screen: 'Memories' }
 }

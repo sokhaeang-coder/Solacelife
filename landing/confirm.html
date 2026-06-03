@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v5 — Layout B: text-on-scene · green grass matching landing page · gold accents -->
+<!-- v7 — Warmer EC copy: "honoured to", "No explanation needed" -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -344,6 +344,11 @@
         <p class="spinner-text" id="loading-text">One moment…</p>
       </div>
 
+      <!-- ════════════════════════════════════════════════════════
+           MEMORY INVITATION STATES
+           Triggered when type is absent or type=memory
+           ════════════════════════════════════════════════════════ -->
+
       <!-- ── Accept success ──────────────────────────────────── -->
       <div id="state-accept" class="state">
         <span class="icon-big">💌</span>
@@ -402,7 +407,70 @@
         <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
       </div>
 
-      <!-- ── Error ───────────────────────────────────────────── -->
+      <!-- ════════════════════════════════════════════════════════
+           EMERGENCY CONTACT CONSENT STATES
+           Triggered when type=emergency
+           ════════════════════════════════════════════════════════ -->
+
+      <!-- ── EC: Accepted ────────────────────────────────────── -->
+      <div id="state-ec-accept" class="state">
+        <span class="icon-big">🛡️</span>
+        <span class="eyebrow">emergency contact confirmed</span>
+        <h1>You're honoured to be there for them</h1>
+        <p class="body-text">
+          <span class="name-highlight" id="ec-accept-sender"></span> will feel the warmth of
+          knowing you said yes. Your name is now woven into their circle of care.
+        </p>
+        <p class="body-text">
+          If there's ever an emergency, first responders or loved ones may reach out to you.
+          Simply being willing to answer that call is a profound gift.
+        </p>
+        <div class="gold-rule"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Learn about Solace Life →</a>
+        <a href="https://solacelife.ca" class="footer-link">solacelife.ca</a>
+      </div>
+
+      <!-- ── EC: Declined ────────────────────────────────────── -->
+      <div id="state-ec-decline" class="state">
+        <span class="icon-big">🕊️</span>
+        <span class="eyebrow">understood</span>
+        <h1>No explanation needed</h1>
+        <p class="body-text">
+          Your preference has been quietly saved. No explanation is needed —
+          this was entirely your choice to make.
+        </p>
+        <p class="privacy-note">
+          <span class="name-highlight" id="ec-decline-sender"></span> will not be notified of your decision.
+          You can still receive memories and moments from them — this only applies to the emergency contact role.
+        </p>
+        <div class="gold-rule"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
+      </div>
+
+      <!-- ── EC: Already accepted ────────────────────────────── -->
+      <div id="state-ec-already-accept" class="state">
+        <span class="icon-big">🛡️</span>
+        <span class="eyebrow">already confirmed</span>
+        <h1>You're already set</h1>
+        <p class="body-text">
+          You've already accepted this role. Thank you for being there for
+          <span class="name-highlight" id="ec-already-accept-sender"></span>.
+        </p>
+        <div class="gold-rule"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
+      </div>
+
+      <!-- ── EC: Already declined ───────────────────────────── -->
+      <div id="state-ec-already-decline" class="state">
+        <span class="icon-big">🕊️</span>
+        <span class="eyebrow">preference on file</span>
+        <h1>Nothing has changed</h1>
+        <p class="body-text">Your preference is already saved — no action needed.</p>
+        <div class="gold-rule"></div>
+        <a href="https://solacelife.ca" class="cta-btn">Visit Solace Life →</a>
+      </div>
+
+      <!-- ── Error (shared) ──────────────────────────────────── -->
       <div id="state-error" class="state">
         <span class="icon-big">🔗</span>
         <span class="eyebrow">link not found</span>
@@ -473,7 +541,7 @@
 
   <!-- ── Confirmation logic ────────────────────────────────────── -->
   <script>
-    const CONFIRM_EDGE_URL  = 'https://yfthwahxahjabfbuntys.supabase.co/functions/v1/confirm-family-email'
+    const SUPABASE_BASE    = 'https://yfthwahxahjabfbuntys.supabase.co/functions/v1'
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdGh3YWh4YWhqYWJmYnVudHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MTE4MzAsImV4cCI6MjA5NDE4NzgzMH0.VfnjNTjE7RRux6s4-3icNLQoyhTl_mGYrW3Zlz9e_kE'
 
     function showState(id) {
@@ -481,63 +549,97 @@
       document.getElementById(id).classList.add('active')
     }
 
+    function setText(id, val) {
+      const el = document.getElementById(id)
+      if (el) el.textContent = val
+    }
+
     async function run() {
       const params = new URLSearchParams(window.location.search)
       const token  = params.get('token')
       const action = params.get('action') || 'accept'
+      const type   = params.get('type')   || 'memory'   // 'memory' | 'emergency'
+
+      const isEmergency = type === 'emergency'
 
       const loadingEl = document.getElementById('loading-text')
       if (loadingEl) {
-        loadingEl.textContent = action === 'decline'
-          ? 'Saving your preference…'
-          : 'Confirming your email…'
+        loadingEl.textContent = isEmergency
+          ? (action === 'decline' ? 'Saving your preference…' : 'Confirming your response…')
+          : (action === 'decline' ? 'Saving your preference…' : 'Confirming your email…')
       }
 
       if (!token) {
         showState('state-error')
-        document.getElementById('error-detail').textContent = 'No confirmation token found in this link.'
+        setText('error-detail', 'No confirmation token found in this link.')
         return
       }
 
+      const endpoint = isEmergency
+        ? `${SUPABASE_BASE}/confirm-emergency-contact`
+        : `${SUPABASE_BASE}/confirm-family-email`
+
       try {
         const res  = await fetch(
-          `${CONFIRM_EDGE_URL}?token=${encodeURIComponent(token)}&action=${encodeURIComponent(action)}`,
+          `${endpoint}?token=${encodeURIComponent(token)}&action=${encodeURIComponent(action)}`,
           { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
         )
         const data = await res.json()
 
         if (!res.ok) {
           showState('state-error')
-          document.getElementById('error-detail').textContent = data.error || ''
+          setText('error-detail', data.error || '')
           return
         }
 
-        const recipientName = data.name       || ''
-        const senderName    = data.senderName || 'the person who invited you'
+        const senderName = data.senderName || 'the person who invited you'
+        const name       = data.name       || ''
 
-        if (data.action === 'decline' || action === 'decline') {
+        // ── Emergency contact flow ─────────────────────────────
+        if (isEmergency) {
+          if (action === 'decline' || data.action === 'decline') {
+            if (data.already_declined) {
+              showState('state-ec-already-decline')
+            } else {
+              setText('ec-decline-sender', senderName)
+              showState('state-ec-decline')
+            }
+            return
+          }
+          if (data.already_accepted) {
+            setText('ec-already-accept-sender', senderName)
+            showState('state-ec-already-accept')
+            return
+          }
+          setText('ec-accept-sender', senderName)
+          showState('state-ec-accept')
+          return
+        }
+
+        // ── Memory invitation flow ─────────────────────────────
+        if (action === 'decline' || data.action === 'decline') {
           if (data.already_declined) {
             showState('state-already-decline')
           } else {
-            document.getElementById('decline-sender').textContent = senderName
+            setText('decline-sender', senderName)
             showState('state-decline')
           }
           return
         }
 
         if (data.already_confirmed) {
-          document.getElementById('already-accept-name').textContent = recipientName
+          setText('already-accept-name', name)
           showState('state-already-accept')
           return
         }
 
-        document.getElementById('accept-name').textContent   = recipientName
-        document.getElementById('accept-sender').textContent = senderName
+        setText('accept-name',   name)
+        setText('accept-sender', senderName)
         showState('state-accept')
 
       } catch (err) {
         showState('state-error')
-        document.getElementById('error-detail').textContent = 'Network error — please try again.'
+        setText('error-detail', 'Network error — please try again.')
       }
     }
 

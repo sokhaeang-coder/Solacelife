@@ -260,7 +260,7 @@
       background: #000;
     }
 
-    /* Photo */
+    /* Photo — single */
     .photo-wrap {
       border-radius: 18px;
       overflow: hidden;
@@ -272,6 +272,35 @@
       max-height: 480px;
       object-fit: contain;
       background: #000;
+    }
+
+    /* Photo — gallery (multiple photos) */
+    .photo-gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .photo-gallery-item {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .photo-gallery-item img {
+      width: 100%;
+      display: block;
+      max-height: 520px;
+      object-fit: contain;
+      background: #000;
+    }
+    .photo-gallery-count {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 6px 0 0;
     }
 
     /* Written content */
@@ -614,11 +643,10 @@
     }
 
     // ── Render media section ──────────────────────────────────
-    function renderMedia(type, mediaUrl, title) {
+    function renderMedia(type, mediaUrl, title, photoUrls) {
       const el = document.getElementById('media-section')
-      if (!mediaUrl) { el.style.display = 'none'; return }
 
-      if (type === 'voice') {
+      if (type === 'voice' && mediaUrl) {
         el.innerHTML = `
           <div class="audio-player-wrap">
             <p class="label">🎙️ Voice Recording</p>
@@ -626,7 +654,8 @@
               Your browser doesn't support audio playback.
             </audio>
           </div>`
-      } else if (type === 'video') {
+
+      } else if (type === 'video' && mediaUrl) {
         el.innerHTML = `
           <div class="video-player-wrap">
             <video controls preload="metadata" playsinline
@@ -635,11 +664,32 @@
               Your browser doesn't support video playback.
             </video>
           </div>`
+
       } else if (type === 'photo') {
-        el.innerHTML = `
-          <div class="photo-wrap">
-            <img src="${escHtml(mediaUrl)}" alt="${escHtml(title || 'Moment photo')}">
-          </div>`
+        // Use photo_urls array when available; fall back to single media_url
+        const urls = (photoUrls && photoUrls.length > 0) ? photoUrls : (mediaUrl ? [mediaUrl] : [])
+        if (!urls.length) { el.style.display = 'none'; return }
+
+        if (urls.length === 1) {
+          // Single photo — simple full-width card
+          el.innerHTML = `
+            <div class="photo-wrap">
+              <img src="${escHtml(urls[0])}" alt="${escHtml(title || 'Moment photo')}">
+            </div>`
+        } else {
+          // Multiple photos — gallery stack
+          const countLabel = `${urls.length} photos`
+          const items = urls.map((url, i) => `
+            <div class="photo-gallery-item">
+              <img src="${escHtml(url)}" alt="${escHtml(title || 'Moment photo')} ${i + 1}">
+            </div>`).join('')
+          el.innerHTML = `
+            <div class="photo-gallery">
+              <div class="photo-gallery-count">📷 ${escHtml(countLabel)}</div>
+              ${items}
+            </div>`
+        }
+
       } else {
         el.style.display = 'none'
       }
@@ -699,10 +749,11 @@
         document.getElementById('memory-type-badge').textContent = typeMeta.label
 
         // Media
-        renderMedia(m.type, m.media_url, m.title)
+        renderMedia(m.type, m.media_url, m.title, m.photo_urls)
 
-        // Written content
-        if (m.content) {
+        // Written content — only for note/text types.
+        // Photo albums store a JSON paths array in content, not human-readable text.
+        if (m.content && m.type !== 'photo') {
           document.getElementById('content-section').style.display = 'block'
           document.getElementById('memory-content').textContent = m.content
         }

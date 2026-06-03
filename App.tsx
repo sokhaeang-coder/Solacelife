@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
-import { ActivityIndicator, Text, View, AppState, Platform } from 'react-native'
+import * as Sentry from '@sentry/react-native'
+import { useState, useEffect, useRef } from 'react'
+import { ActivityIndicator, Text, View, AppState, Platform, PixelRatio, Animated } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -11,10 +13,27 @@ import { C, SKY } from './lib/constants'
 import { s } from './lib/styles'
 import { AuthContext } from './lib/AuthContext'
 import { NavScaleProvider, useNavScale } from './lib/NavScaleContext'
+import { UnreadMomentsProvider, useUnreadMoments } from './lib/UnreadMomentsContext'
 import {
   refreshEmergencyNotification,
   handleEmergencyNotificationResponse,
 } from './lib/emergencyNotification'
+
+// ── Sentry — crash & error capture ────────────────────────────────────────
+//  Initialise before any other code runs so even early boot errors are caught.
+//  Replace SENTRY_DSN with your actual DSN from sentry.io/settings/projects.
+const SENTRY_DSN = 'https://c910ee1888cafbf3c58b1ee5f6e4786e@o4511451692597248.ingest.us.sentry.io/4511451711471616'
+
+Sentry.init({
+  dsn: SENTRY_DSN,
+  // Set tracesSampleRate to 1.0 for full traces during launch;
+  // drop to 0.2 once you're past 500 users and don't need every request.
+  tracesSampleRate: 1.0,
+  // Attach device/OS info automatically
+  environment: __DEV__ ? 'development' : 'production',
+  // Only send events in production — keeps your Sentry quota clean during dev
+  enabled: !__DEV__,
+})
 
 // ── Push notification handler (must be set before any Notifications call) ──
 //  Controls how notifications behave when the app is in the foreground.
@@ -35,10 +54,9 @@ import SettingsScreen from './screens/SettingsScreen'
 import AvatarScreen   from './screens/AvatarScreen'
 
 import OnboardingProfileScreen         from './screens/onboarding/OnboardingProfileScreen'
-import OnboardingOccasionsScreen       from './screens/onboarding/OnboardingOccasionsScreen'
 import OnboardingEmergencyScreen       from './screens/onboarding/OnboardingEmergencyScreen'
 import OnboardingTourScreen            from './screens/onboarding/OnboardingTourScreen'
-import OnboardingEstateScreen          from './screens/onboarding/OnboardingEstateScreen'
+import OnboardingBridgeScreen          from './screens/onboarding/OnboardingBridgeScreen'
 import OnboardingInvitedScreen         from './screens/onboarding/OnboardingInvitedScreen'
 import OnboardingConvertedScreen       from './screens/onboarding/OnboardingConvertedScreen'
 import RecipientHomeScreen             from './screens/RecipientHomeScreen'
@@ -137,27 +155,68 @@ async function registerPushToken(userId: string) {
 const Stack = createStackNavigator()
 const Tab   = createBottomTabNavigator()
 
-function TabIcon({ icon, focused }: any) {
+function TabIcon({ icon, focused, badge }: { icon: string; focused: boolean; badge?: boolean }) {
   const { fontSize, wrapWidth, wrapHeight } = useNavScale()
+  const pulse = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    if (!badge) {
+      pulse.setValue(1)
+      return
+    }
+    // Soft heartbeat: grow to 1.45× then shrink to 0.8× on a 650ms loop
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.45, duration: 650, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.80, duration: 650, useNativeDriver: true }),
+      ])
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [badge])
+
   return (
     <View style={[s.tabIconWrap, { width: wrapWidth, height: wrapHeight }]}>
       <View style={[s.tabIconPill, focused && s.tabIconPillActive]}>
         <Text style={[s.tabIconEmoji, { fontSize, lineHeight: fontSize + 2 }]}>{icon}</Text>
       </View>
+      {badge && (
+        <Animated.View style={{
+          position: 'absolute', top: 2, right: 2,
+          width: 10, height: 10, borderRadius: 5,
+          backgroundColor: '#F06292',
+          transform: [{ scale: pulse }],
+          borderWidth: 1.5, borderColor: '#fff',
+        }} />
+      )}
     </View>
+  )
+}
+
+// Tab bar label — allows modest Dynamic Type scaling (up to 1.3×) so seniors
+// who set a larger iOS font size see bigger labels, but the tab bar never overflows.
+function TabLabel({ label, color }: { label: string; color: string }) {
+  return (
+    <Text
+      style={[s.tabLabel, { color }]}
+      maxFontSizeMultiplier={1.3}
+      numberOfLines={1}>
+      {label}
+    </Text>
   )
 }
 
 function MainTabs() {
   const { tabBarHeight } = useNavScale()
+  const { hasUnread } = useUnreadMoments()
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: [s.tabBar, { height: tabBarHeight }], tabBarLabelStyle: s.tabLabel,
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: [s.tabBar, { height: tabBarHeight }],
       tabBarActiveTintColor: C.accent, tabBarInactiveTintColor: C.greyDim }}>
-      <Tab.Screen name="Home"     component={HomeScreen}     options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠"  focused={focused} />, tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Memories" component={MemoriesScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💌"  focused={focused} />, tabBarLabel: 'Moments' }} />
-      <Tab.Screen name="Vault"    component={VaultScreen}    options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🔐"  focused={focused} />, tabBarLabel: 'Vault' }} />
-      <Tab.Screen name="Family"   component={FamilyScreen}   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👨‍👩‍👧" focused={focused} />, tabBarLabel: 'Family' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="⚙️"  focused={focused} />, tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Home"     component={HomeScreen}     options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Home"    color={color} /> }} />
+      <Tab.Screen name="Memories" component={MemoriesScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💌"  focused={focused} badge={hasUnread} />, tabBarLabel: ({ color }) => <TabLabel label="Moments" color={color} /> }} />
+      <Tab.Screen name="Vault"    component={VaultScreen}    options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🔐"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Vault"   color={color} /> }} />
+      <Tab.Screen name="Family"   component={FamilyScreen}   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👨‍👩‍👧" focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Family"  color={color} /> }} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="⚙️"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Profile" color={color} /> }} />
     </Tab.Navigator>
   )
 }
@@ -166,17 +225,18 @@ function MainTabs() {
 function RecipientTabs() {
   const { tabBarHeight } = useNavScale()
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: [s.tabBar, { height: tabBarHeight }], tabBarLabelStyle: s.tabLabel,
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: [s.tabBar, { height: tabBarHeight }],
       tabBarActiveTintColor: C.accent, tabBarInactiveTintColor: C.greyDim }}>
-      <Tab.Screen name="Vault"    component={RecipientHomeScreen}   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💌"  focused={focused} />, tabBarLabel: 'My Vault' }} />
-      <Tab.Screen name="Family"   component={RecipientFamilyScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👨‍👩‍👧" focused={focused} />, tabBarLabel: 'Family' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen}        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="⚙️"  focused={focused} />, tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Vault"    component={RecipientHomeScreen}   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💌"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="My Vault" color={color} /> }} />
+      <Tab.Screen name="Family"   component={RecipientFamilyScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👨‍👩‍👧" focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Family"   color={color} /> }} />
+      <Tab.Screen name="Settings" component={SettingsScreen}        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="⚙️"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Profile"  color={color} /> }} />
     </Tab.Navigator>
   )
 }
 
 // ── Root App ───────────────────────────────────────────────────
-export default function App() {
+function AppInner() {
+  const { checkUnread } = useUnreadMoments()
   const [session, setSession]             = useState<any>(null)
   const [loading, setLoading]             = useState(true)
   const [onboardingDone, setOnboardingDone] = useState(false)
@@ -196,6 +256,18 @@ export default function App() {
     async function applySession(sess: any) {
       setSession(sess)
       if (sess) {
+        // ── Stale session guard ───────────────────────────────────
+        // getUser() makes a live server call to validate the JWT.
+        // If the user was deleted (e.g. after a test wipe), the token
+        // in AsyncStorage is stale. Sign out immediately so the user
+        // lands on the auth screen with a clean slate.
+        const { error: userCheckErr } = await supabase.auth.getUser()
+        if (userCheckErr) {
+          console.warn('Stale session detected — signing out:', userCheckErr.message)
+          await supabase.auth.signOut()
+          return
+        }
+
         try {
           const { data: profile } = await supabase
             .from('profiles')
@@ -262,6 +334,38 @@ export default function App() {
             setOnboardingType(resolvedOnboardingType as any)
             setSubscriptionTier(profile.subscription_tier || 'free')
             setSubscriptionStatus(profile.subscription_status || 'inactive')
+
+            // ── Sentry user context — attaches email/id to every crash report ──
+            Sentry.setUser({
+              id:          sess.user.id,
+              email:       sess.user.email,
+              account_type: resolvedAccountType,
+              plan:        profile.subscription_tier || 'free',
+            })
+
+            // ── Unread received memories check ────────────────────────────────
+            // Runs on every login so the Moments tab badge lights up immediately
+            // (before the user taps the tab). Non-fatal — badge just won't show
+            // if this query fails.
+            try {
+              const { data: fmRows } = await supabase
+                .from('family_members')
+                .select('id')
+                .eq('recipient_profile_id', sess.user.id)
+
+              if (fmRows?.length) {
+                const today = new Date().toISOString().split('T')[0]
+                const { data: deliveries } = await supabase
+                  .from('scheduled_deliveries')
+                  .select('id')
+                  .in('family_member_id', fmRows.map((r: any) => r.id))
+                  .lte('scheduled_date', today)
+
+                if (deliveries?.length) {
+                  checkUnread(deliveries.map((d: any) => d.id))
+                }
+              }
+            } catch { /* non-fatal */ }
           }
         } catch (e) {
           console.warn('Profile load error:', e)
@@ -273,6 +377,7 @@ export default function App() {
         setOnboardingType('sender')
         setSubscriptionTier('free')
         setSubscriptionStatus('inactive')
+        Sentry.setUser(null)   // clear identity on sign-out
       }
       // Only dismiss the splash on the first event (INITIAL_SESSION)
       if (!initialised) {
@@ -376,10 +481,9 @@ export default function App() {
               // OnboardingInvitedScreen above before reaching this branch.
               <Stack.Navigator screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="OnboardingProfile"   component={OnboardingProfileScreen} />
-                <Stack.Screen name="OnboardingOccasions" component={OnboardingOccasionsScreen} />
                 <Stack.Screen name="OnboardingEmergency" component={OnboardingEmergencyScreen} />
                 <Stack.Screen name="OnboardingTour"      component={OnboardingTourScreen} />
-                <Stack.Screen name="OnboardingEstate"    component={OnboardingEstateScreen} />
+                <Stack.Screen name="OnboardingBridge"    component={OnboardingBridgeScreen} />
               </Stack.Navigator>
             )
           )
@@ -393,5 +497,16 @@ export default function App() {
       </NavigationContainer>
     </AuthContext.Provider>
     </NavScaleProvider>
+  )
+}
+
+// ── Root export — wraps AppInner with the UnreadMomentsProvider ────────────
+//  UnreadMomentsProvider must sit above AppInner so that both AppInner
+//  (applySession unread check) and MainTabs (badge consumer) can use the context.
+export default function App() {
+  return (
+    <UnreadMomentsProvider>
+      <AppInner />
+    </UnreadMomentsProvider>
   )
 }

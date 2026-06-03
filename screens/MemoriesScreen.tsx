@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef, useContext } from 'react'
+import { useState, useEffect, useRef, useContext, useCallback } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { Text, View, TouchableOpacity, TextInput, ActivityIndicator,
-  ScrollView, Modal, KeyboardAvoidingView, Platform, Animated, Image } from 'react-native'
+  ScrollView, Modal, KeyboardAvoidingView, Platform, Animated, Easing, Image, StyleSheet, Share, Keyboard } from 'react-native'
+// expo-media-library loaded dynamically inside savePhotoToLibrary()
+// so a missing install doesn't break the bundle
 import { LinearGradient } from 'expo-linear-gradient'
 import { Audio } from 'expo-av'
 import { VideoView, useVideoPlayer } from 'expo-video'
@@ -8,11 +11,13 @@ import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../lib/supabase'
 import { C, WARM, WM, PLUM } from '../lib/constants'
-import { s } from '../lib/styles'
+import { s, width } from '../lib/styles'
 import ScreenWrap from '../components/ScreenWrap'
 import { CalendarPicker } from '../components/CalendarPicker'
 import { getUpcomingOccasions, buildOccasionNudge } from '../lib/occasions'
 import { AuthContext } from '../lib/AuthContext'
+import { useUnreadMoments } from '../lib/UnreadMomentsContext'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const MEMORY_TYPES = [
   { key: 'written', label: 'Written Story',  icon: '📖', desc: 'Write a message or life story',     available: true  },
@@ -26,8 +31,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function defaultScheduleDate() {
   const d = new Date()
-  // Default to today so testers can schedule same-day deliveries.
-  // Change back to d.setDate(d.getDate() + 1) before production launch.
+  d.setDate(d.getDate() + 1)
   return { month: d.getMonth() + 1, day: d.getDate(), year: d.getFullYear() }
 }
 
@@ -206,8 +210,77 @@ function VideoPlayerModal({
   )
 }
 
-export default function MemoriesScreen({ navigation }: any) {
+// ── MemoryPillCycler ─────────────────────────────────────────────────────────
+// Shows one memory pill at a time, sliding newest→oldest every 2.5 s.
+// No wrapping, no multiple rows — the card height stays fixed.
+function MemoryPillCycler({ memories }: { memories: any[] }) {
+  const [idx, setIdx] = useState(0)
+  const slideAnim    = useRef(new Animated.Value(0)).current
+  const CARD_WIDTH   = 180 // approximate pill row width for slide distance
+
+  useEffect(() => {
+    setIdx(0)
+    slideAnim.setValue(0)
+  }, [memories.length])
+
+  useEffect(() => {
+    if (memories.length <= 1) return
+    const timer = setInterval(() => {
+      // slide current pill out to the left
+      Animated.timing(slideAnim, {
+        toValue: -CARD_WIDTH,
+        duration: 260,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start(() => {
+        setIdx(i => (i + 1) % memories.length)
+        // snap to right offscreen, then slide in
+        slideAnim.setValue(CARD_WIDTH)
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }).start()
+      })
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [memories.length])
+
+  if (memories.length === 0) return null
+  const mem  = memories[idx]
+  const icon = MEMORY_TYPES.find(t => t.key === mem.type)?.icon || '📖'
+  const isReceived = !!mem._received
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, overflow: 'hidden', marginTop: 8 }}>
+      <Animated.View style={{ transform: [{ translateX: slideAnim }], flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 4,
+          backgroundColor: isReceived ? C.accent + '22' : C.mauveDim + '55',
+          borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
+          borderWidth: isReceived ? 1 : 0,
+          borderColor: isReceived ? C.accent + '33' : 'transparent',
+          flexShrink: 1,
+        }}>
+          <Text style={{ fontSize: 12 }}>{isReceived ? '📥' : icon}</Text>
+          <Text style={{ color: C.grey, fontSize: 11, flexShrink: 1 }} numberOfLines={1}>
+            {mem.title?.slice(0, 22)}{(mem.title?.length ?? 0) > 22 ? '…' : ''}
+          </Text>
+        </View>
+        {memories.length > 1 && (
+          <Text style={{ color: C.greyDim, fontSize: 11, flexShrink: 0 }}>
+            {idx + 1}/{memories.length}
+          </Text>
+        )}
+      </Animated.View>
+    </View>
+  )
+}
+
+export default function MemoriesScreen({ navigation, route }: any) {
   const { accountType } = useContext(AuthContext) as any
+  const { setHasUnread, markRead } = useUnreadMoments()
 
   // ── Received memories (sent TO this user by others) ──
   const [receivedGroups, setReceivedGroups]   = useState<{
@@ -228,8 +301,10 @@ export default function MemoriesScreen({ navigation }: any) {
   const [saveMsg, setSaveMsg]         = useState('')
   const [createStep, setCreateStep]   = useState<1 | 2>(1)
   const stepFade = useRef(new Animated.Value(1)).current
-  const [confirmDelete, setConfirmDelete] = useState<any>(null)
-  const [deleting, setDeleting]           = useState(false)
+  const [confirmDelete, setConfirmDelete]   = useState<any>(null)
+  const [deleting, setDeleting]             = useState(false)
+  const [confirmDismiss, setConfirmDismiss] = useState<any>(null)  // received memory soft-delete
+  const [dismissing, setDismissing]         = useState(false)
   const [viewItem, setViewItem]       = useState<any>(null)
 
   // ── Voice memo state ──
@@ -243,6 +318,66 @@ export default function MemoriesScreen({ navigation }: any) {
   const recordingRef  = useRef<Audio.Recording | null>(null)
   const recTimerRef   = useRef<any>(null)
   const pulseAnim     = useRef(new Animated.Value(1)).current
+  // ── Voice playback ──
+  const [isPlaying, setIsPlaying]       = useState(false)
+  const [playbackPos, setPlaybackPos]   = useState(0)   // ms
+  const [playbackDur, setPlaybackDur]   = useState(0)   // ms
+  const voicePlayerRef = useRef<Audio.Sound | null>(null)
+
+  // ── Success confirmation overlay ──
+  const [showConfirm, setShowConfirm]       = useState(false)
+  const confirmBounce                        = useRef(new Animated.Value(0)).current
+  const confirmProgress                      = useRef(new Animated.Value(0)).current
+  const confirmSoundRef                      = useRef<Audio.Sound | null>(null)
+  const confirmAfterDismiss                  = useRef<() => void>(() => {})
+
+  // ── Hue wave border — 4 phase-offset animated values for Moments cards ──
+  const hueAnims = useRef(
+    MEMORY_TYPES.map((_, i) => new Animated.Value(i * 0.25))
+  ).current
+
+  useEffect(() => {
+    const loops = hueAnims.map((anim, i) =>
+      Animated.loop(
+        Animated.timing(anim, {
+          toValue: 1 + i * 0.25,
+          duration: 4000,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        })
+      )
+    )
+    loops.forEach(l => l.start())
+    return () => loops.forEach(l => l.stop())
+  }, [])
+
+  // ── Video upload bar animation ────────────────────────────────────────────
+  useEffect(() => {
+    Animated.timing(videoBarAnim, {
+      toValue: videoUploadPct / 100,
+      duration: 350,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start()
+  }, [videoUploadPct])
+
+  // ── Glow burst — press animation for each Moments card ──
+  const glowAnims = useRef(
+    MEMORY_TYPES.map(() => ({
+      opacity: new Animated.Value(0),
+      scale:   new Animated.Value(1),
+    }))
+  ).current
+
+  function fireGlow(i: number) {
+    const { opacity, scale } = glowAnims[i]
+    opacity.setValue(0.7)
+    scale.setValue(1)
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 0,   duration: 500, useNativeDriver: true }),
+      Animated.timing(scale,   { toValue: 1.6, duration: 500, useNativeDriver: true }),
+    ]).start()
+  }
 
   // ── Video state ──
   const [showVideoModal, setShowVideoModal]   = useState(false)
@@ -250,6 +385,8 @@ export default function MemoriesScreen({ navigation }: any) {
   const [videoTitle, setVideoTitle]           = useState('')
   const [uploadingVideo, setUploadingVideo]   = useState(false)
   const [videoMsg, setVideoMsg]               = useState('')
+  const [videoUploadPct, setVideoUploadPct]   = useState(0)
+  const videoBarAnim = useRef(new Animated.Value(0)).current
   const [videoDuration, setVideoDuration]     = useState(0)
   const [viewVideoItem, setViewVideoItem]     = useState<any>(null)
   const [videoSignedUrl, setVideoSignedUrl]   = useState<string | null>(null)
@@ -268,6 +405,10 @@ export default function MemoriesScreen({ navigation }: any) {
   const [albumLoading, setAlbumLoading]         = useState(false)
   const [albumDebug, setAlbumDebug]             = useState('')
   const [fullscreenPhoto, setFullscreenPhoto]   = useState<{ url: string, caption: string } | null>(null)
+  const [photoActionMsg, setPhotoActionMsg]     = useState('')
+  const [photoSaving, setPhotoSaving]           = useState(false)
+  const [photoSharing, setPhotoSharing]         = useState(false)
+  const [photoVaulting, setPhotoVaulting]       = useState(false)
 
   // ── Audio playback state ──
   const [playingId, setPlayingId]   = useState<string | null>(null)
@@ -352,6 +493,7 @@ export default function MemoriesScreen({ navigation }: any) {
   // ── Family member cards state ──
   const [allFamilyMembers, setAllFamilyMembers]       = useState<any[]>([])
   const [memberPhotoUrls, setMemberPhotoUrls]         = useState<Record<string, string>>({})
+  const [pendingOpenMemberId, setPendingOpenMemberId] = useState<string | null>(null)
   // Resolved photo URLs for G1 senders (keyed by sender user_id)
   const [receivedSenderPhotoUrls, setReceivedSenderPhotoUrls] = useState<Record<string, string>>({})
   const [selectedMemberGroup, setSelectedMemberGroup] = useState<{
@@ -390,9 +532,12 @@ export default function MemoriesScreen({ navigation }: any) {
   }, [])
 
   // Reload when the user navigates back to this tab (e.g. after adding a family member)
+  // Also clears the Moments tab badge immediately when the tab gains focus.
   useEffect(() => {
     if (!navigation) return
     const unsubscribe = navigation.addListener('focus', () => {
+      // Clear the pulsing badge the moment the user arrives on this tab
+      setHasUnread(false)
       loadMemories()
       loadCapsules()
       loadFamilyMembersWithPhotos()
@@ -407,6 +552,42 @@ export default function MemoriesScreen({ navigation }: any) {
       clearInterval(recTimerRef.current)
     }
   }, [])
+
+  // ── Cross-tab deep-link: Family tab passes openMemberId when bridging here ──
+  useFocusEffect(
+    useCallback(() => {
+      const id = route?.params?.openMemberId
+      if (id) {
+        setPendingOpenMemberId(id)
+        navigation.setParams({ openMemberId: undefined })
+      }
+    }, [route?.params?.openMemberId])
+  )
+
+  // Once allFamilyMembers is loaded, open the pending member's detail modal
+  useEffect(() => {
+    if (!pendingOpenMemberId || allFamilyMembers.length === 0) return
+    const member = allFamilyMembers.find((m: any) => m.id === pendingOpenMemberId)
+    if (!member) return
+
+    const memberCapsules = capsules.filter((c: any) => c.family_member_id === pendingOpenMemberId)
+    const memoryIds: string[] = []
+    const capsuleByMemory: Record<string, any> = {}
+    for (const cap of memberCapsules) {
+      if (!memoryIds.includes(cap.memory_id)) memoryIds.push(cap.memory_id)
+      capsuleByMemory[cap.memory_id] = cap
+    }
+
+    setSelectedMemberGroup({
+      memberId:           pendingOpenMemberId,
+      memberName:         member.name || 'Someone',
+      memoryIds,
+      capsuleByMemory,
+      receivedDeliveries: [],
+      overridePhotoUrl:   memberPhotoUrls[pendingOpenMemberId] ?? null,
+    })
+    setPendingOpenMemberId(null)
+  }, [pendingOpenMemberId, allFamilyMembers, capsules, memberPhotoUrls])
 
   async function loadMemories() {
     setLoading(true)
@@ -442,10 +623,12 @@ export default function MemoriesScreen({ navigation }: any) {
       const senderIds  = [...new Set(memberRows.map((r: any) => r.user_id))] as string[]
 
       // 2. Fetch deliveries + the memory they reference
+      //    Exclude any rows the recipient has dismissed (soft-deleted from their view)
       const { data: deliveries } = await supabase
         .from('scheduled_deliveries')
         .select('*, memories(*)')
         .in('family_member_id', memberIds)
+        .is('dismissed_by_recipient_at', null)
         .order('created_at', { ascending: false })
 
       // 3. Fetch sender display names + avatar_url (requires migration 029 for cross-user read)
@@ -483,6 +666,10 @@ export default function MemoriesScreen({ navigation }: any) {
         }))
 
       setReceivedGroups(groups)
+
+      // Persist seen delivery IDs so the badge stays cleared on next launch
+      const deliveryIds = (deliveries ?? []).map((d: any) => d.id)
+      if (deliveryIds.length) markRead(deliveryIds)
 
       // 5. Resolve signed photo URLs for each sender
       //    (requires migration 030: storage cross-user read for profiles/ prefix)
@@ -555,13 +742,97 @@ export default function MemoriesScreen({ navigation }: any) {
     })
   }
 
+  // ── Confirmation overlay — Option B: warm gradient, heart, emphasise "Create another" ──
+  function renderConfirmOverlay() {
+    if (!showConfirm) return null
+    return (
+      <Animated.View style={{
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center', justifyContent: 'center',
+        paddingHorizontal: 24,
+        opacity: confirmBounce,
+      }}>
+        <Animated.View style={{
+          width: '100%', borderRadius: 28, overflow: 'hidden',
+          transform: [{ scale: confirmBounce.interpolate({ inputRange: [0, 0.6, 0.8, 1], outputRange: [0.3, 1.15, 0.92, 1] }) }],
+        }}>
+          <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={{ paddingVertical: 28, paddingHorizontal: 24, alignItems: 'center' }}>
+            {/* Handle pill */}
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(61,16,32,0.2)', marginBottom: 22 }} />
+            {/* Heart circle */}
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.78)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+              <Text style={{ fontSize: 42, lineHeight: 50 }}>♥</Text>
+            </View>
+            {/* Headline */}
+            <Text style={{ fontSize: 26, fontWeight: '700', color: '#3D1020', textAlign: 'center', marginBottom: 8 }}>
+              Beautifully done!
+            </Text>
+            <Text style={{ fontSize: 16, color: '#7A3448', textAlign: 'center', lineHeight: 24, marginBottom: 20 }}>
+              Your family will treasure this forever.{'\n'}Keep the memories coming.
+            </Text>
+            {/* Progress bar */}
+            <View style={{ width: '100%', height: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.4)', overflow: 'hidden', marginBottom: 6 }}>
+              <Animated.View style={{
+                height: 10, borderRadius: 8, backgroundColor: 'rgba(61,16,32,0.45)',
+                width: confirmProgress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+              }} />
+            </View>
+            <Text style={{ fontSize: 12, color: '#7A3448', marginBottom: 26 }}>100% delivered</Text>
+            {/* Single close button */}
+            <TouchableOpacity onPress={dismissConfirmation} activeOpacity={0.85} style={{ width: '100%' }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.7)', paddingVertical: 22, paddingHorizontal: 16, alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: '#3D1020' }}>Close — let's make more memories!</Text>
+              </View>
+            </TouchableOpacity>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
+    )
+  }
+
   // New memory: save memory + scheduled delivery in one go
+  async function triggerSuccessConfirmation(afterDismiss: () => void) {
+    confirmAfterDismiss.current = afterDismiss
+    confirmBounce.setValue(0)
+    confirmProgress.setValue(0)
+    setShowConfirm(true)
+    // Play chord
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/sounds/success-chord.wav'),
+        { shouldPlay: true, volume: 0.9 }
+      )
+      confirmSoundRef.current = sound
+    } catch (_) { /* silent — audio permission not granted yet */ }
+    // Bounce the circle in
+    Animated.spring(confirmBounce, {
+      toValue: 1, useNativeDriver: true,
+      friction: 4, tension: 120,
+    }).start()
+    // Fill the progress bar
+    Animated.timing(confirmProgress, {
+      toValue: 1, duration: 900, delay: 250, useNativeDriver: false,
+    }).start()
+    // Safety auto-dismiss after 90 seconds in case button is missed
+    setTimeout(() => dismissConfirmation(), 90000)
+  }
+
+  async function dismissConfirmation() {
+    setShowConfirm(false)
+    if (confirmSoundRef.current) {
+      await confirmSoundRef.current.unloadAsync()
+      confirmSoundRef.current = null
+    }
+    confirmAfterDismiss.current()
+  }
+
   async function handleSaveAndSchedule() {
+    Keyboard.dismiss()
     if (selectedMemberIds.length === 0) { setScheduleMsg('Select at least one recipient.'); return }
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const picked = new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
-    // Allow today for same-day testing. Change back to <= before production launch.
-    if (picked < today) { setScheduleMsg('Please choose today or a future date.'); return }
+    if (picked <= today) { setScheduleMsg('Please choose a future date.'); return }
     setSaving(true); setScheduleMsg('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSaving(false); return }
@@ -586,11 +857,12 @@ export default function MemoriesScreen({ navigation }: any) {
     const { error: schedErr } = await supabase.from('scheduled_deliveries').insert(rows)
     setSaving(false)
     if (schedErr) { setScheduleMsg('Error scheduling: ' + schedErr.message); return }
-    closeModal(); loadMemories(); loadCapsules()
+    triggerSuccessConfirmation(() => { closeModal(); loadMemories(); loadCapsules() })
   }
 
   // New memory: save only (no schedule) — escape hatch from step 2
   async function handleSaveOnly() {
+    Keyboard.dismiss()
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSaving(false); return }
@@ -600,7 +872,7 @@ export default function MemoriesScreen({ navigation }: any) {
     })
     setSaving(false)
     if (error) { setScheduleMsg('Error saving: ' + error.message); return }
-    closeModal(); loadMemories()
+    triggerSuccessConfirmation(() => { closeModal(); loadMemories() })
   }
 
   // Edit existing memory (unchanged single-step flow)
@@ -615,7 +887,7 @@ export default function MemoriesScreen({ navigation }: any) {
     const { error } = await supabase.from('memories').update(payload).eq('id', editingItem.id)
     setSaving(false)
     if (error) { setSaveMsg('Error saving: ' + error.message) }
-    else { closeModal(); loadMemories() }
+    else { triggerSuccessConfirmation(() => { closeModal(); loadMemories() }) }
   }
 
   function openVoiceModal() {
@@ -623,8 +895,48 @@ export default function MemoriesScreen({ navigation }: any) {
     setRecDuration(0); setVoiceMsg(''); setIsRecording(false)
   }
 
+  async function stopVoicePlayer() {
+    if (voicePlayerRef.current) {
+      await voicePlayerRef.current.unloadAsync()
+      voicePlayerRef.current = null
+    }
+    setIsPlaying(false); setPlaybackPos(0); setPlaybackDur(0)
+  }
+
+  async function playPauseVoice() {
+    if (!recordedUri) return
+    if (isPlaying) {
+      await voicePlayerRef.current?.pauseAsync()
+      setIsPlaying(false)
+      return
+    }
+    try {
+      if (!voicePlayerRef.current) {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: recordedUri },
+          { shouldPlay: true },
+          status => {
+            if (!status.isLoaded) return
+            setPlaybackPos(status.positionMillis)
+            setPlaybackDur(status.durationMillis ?? recDuration * 1000)
+            if (status.didJustFinish) {
+              setIsPlaying(false)
+              setPlaybackPos(0)
+              voicePlayerRef.current?.setPositionAsync(0)
+            }
+          }
+        )
+        voicePlayerRef.current = sound
+      } else {
+        await voicePlayerRef.current.playAsync()
+      }
+      setIsPlaying(true)
+    } catch (_) { /* silent fail */ }
+  }
+
   function closeVoiceModal() {
     if (isRecording) stopRecording()
+    stopVoicePlayer()
     setShowVoiceModal(false); setRecordedUri(null); setVoiceTitle('')
     setRecDuration(0); setVoiceMsg(''); setIsRecording(false)
   }
@@ -786,8 +1098,9 @@ export default function MemoriesScreen({ navigation }: any) {
       }
     }
 
-    setAllFamilyMembers(list)
-    setFamilyMembers(list)  // also prime the schedule modal list
+    const sortedList = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    setAllFamilyMembers(sortedList)
+    setFamilyMembers(sortedList)  // also prime the schedule modal list
 
     // Step 3: Resolve signed photo URLs for member avatars
     const urlMap: Record<string, string> = {}
@@ -877,7 +1190,7 @@ export default function MemoriesScreen({ navigation }: any) {
       }
     }
 
-    return members
+    return [...members].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   }
 
   async function openScheduleModal(mem: any) {
@@ -913,11 +1226,11 @@ export default function MemoriesScreen({ navigation }: any) {
   }
 
   async function saveScheduledDelivery() {
+    Keyboard.dismiss()
     if (selectedMemberIds.length === 0) { setScheduleMsg('Please select at least one recipient.'); return }
     const today = new Date(); today.setHours(0,0,0,0)
     const picked = new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
-    // Allow today for same-day testing. Change back to <= before production launch.
-    if (picked < today) { setScheduleMsg('Please choose today or a future date.'); return }
+    if (picked <= today) { setScheduleMsg('Please choose a future date.'); return }
     setScheduleSaving(true); setScheduleMsg('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setScheduleSaving(false); return }
@@ -941,7 +1254,7 @@ export default function MemoriesScreen({ navigation }: any) {
     const { error } = await supabase.from('scheduled_deliveries').insert(rows)
     setScheduleSaving(false)
     if (error) { setScheduleMsg('Error: ' + error.message); return }
-    closeScheduleModal(); loadCapsules()
+    triggerSuccessConfirmation(() => { closeScheduleModal(); loadCapsules() })
   }
 
   async function cancelCapsule(id: string) {
@@ -989,6 +1302,7 @@ export default function MemoriesScreen({ navigation }: any) {
   }
 
   async function saveVoiceMemo() {
+    Keyboard.dismiss()
     if (!voiceTitle.trim()) { setVoiceMsg('Please enter a title.'); return }
     if (!recordedUri)       { setVoiceMsg('Please record a voice memo first.'); return }
     setUploadingVoice(true); setVoiceMsg('')
@@ -1022,8 +1336,7 @@ export default function MemoriesScreen({ navigation }: any) {
       }).select('id, title, type').single()
       if (dbErr) { setVoiceMsg('Error saving: ' + dbErr.message); setUploadingVoice(false); return }
       setUploadingVoice(false)
-      closeVoiceModal()
-      loadMemories()
+      closeVoiceModal(); loadMemories()
       if (newVoiceMem) autoOpenScheduleModal(newVoiceMem)
     } catch (e: any) { setVoiceMsg('Error: ' + e.message); setUploadingVoice(false) }
   }
@@ -1043,13 +1356,17 @@ export default function MemoriesScreen({ navigation }: any) {
       setVideoMsg('📱 Camera recording requires the Solace Life mobile app. Use "Choose from Library" to upload a video file from your computer.')
       return
     }
+    // allowsEditing: true forces UIImagePickerController on iOS (vs PHPicker) which
+    // is required for videoQuality transcoding to actually apply.
+    // videoQuality: 0 (Low ≈480p) keeps files well under Supabase free-tier 50 MB limit.
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') { setVideoMsg('Camera permission is required.'); return }
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['videos'],
-        videoMaxDuration: 300,
-        allowsEditing: false,
+        videoMaxDuration: 120,   // 2 min max keeps compressed files under 40 MB
+        allowsEditing: true,
+        videoQuality: 0,         // Low — transcodes to ≈480p before returning URI
       } as any)
       if (!result.canceled && result.assets?.[0]) {
         setVideoUri(result.assets[0].uri)
@@ -1067,8 +1384,9 @@ export default function MemoriesScreen({ navigation }: any) {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['videos'],
-        videoMaxDuration: 300,
-        allowsEditing: false,
+        videoMaxDuration: 120,   // 2 min max
+        allowsEditing: true,     // required for videoQuality transcoding on iOS
+        videoQuality: 0,         // Low — transcodes to ≈480p, keeps files under 40 MB
       } as any)
       if (!result.canceled && result.assets?.[0]) {
         setVideoUri(result.assets[0].uri)
@@ -1079,56 +1397,141 @@ export default function MemoriesScreen({ navigation }: any) {
   }
 
   async function saveVideoMemory() {
+    Keyboard.dismiss()
     if (!videoTitle.trim()) { setVideoMsg('Please enter a title.'); return }
     if (!videoUri)          { setVideoMsg('Please record or select a video first.'); return }
     setUploadingVideo(true); setVideoMsg('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setVideoMsg('Not signed in.'); setUploadingVideo(false); return }
+
+    // On iOS, expo-image-picker can return a ph:// asset URI which FileSystem cannot stream.
+    // Copy to a local cache file first to guarantee a file:// path.
+    let localUri = videoUri
+    if (!videoUri.startsWith('file://')) {
+      try {
+        setVideoMsg('Preparing video…')
+        const ext = videoUri.split('.').pop()?.toLowerCase().split('?')[0] || 'mp4'
+        const tempPath = FileSystem.cacheDirectory + `video_upload_${Date.now()}.${ext}`
+        await FileSystem.copyAsync({ from: videoUri, to: tempPath })
+        localUri = tempPath
+        setVideoMsg('')
+      } catch (copyErr: any) {
+        setVideoMsg('Could not read video file: ' + copyErr.message)
+        setUploadingVideo(false)
+        return
+      }
+    }
+
     try {
-      const ext = videoUri.split('.').pop()?.toLowerCase().split('?')[0] || 'mp4'
+      const sizeInfo = await FileSystem.getInfoAsync(localUri, { size: true })
+      const fileSize = sizeInfo.exists ? ((sizeInfo as any).size as number) : 0
+
+      // Hard cap — Supabase free tier enforces a ~50 MB per-file limit
+      if (fileSize > 45 * 1024 * 1024) {
+        const mb = Math.round(fileSize / 1024 / 1024)
+        setVideoMsg(`Video is ${mb} MB after compression — please trim it shorter (2 min max) and try again.`)
+        setUploadingVideo(false)
+        return
+      }
+
+      const ext = localUri.split('.').pop()?.toLowerCase().split('?')[0] || 'mp4'
       const fileName = `${Date.now()}_video.${ext}`
-      const path = `${user.id}/${fileName}`
+      const storagePath = `${user.id}/${fileName}`
       const videoContentType = ext === 'mov' ? 'video/quicktime' : 'video/mp4'
 
-      // fetch().blob() produces corrupt data for large video files on iOS —
-      // use a Supabase signed upload URL + FileSystem.uploadAsync instead,
-      // which streams the file from disk without buffering into memory.
-      const { data: uploadUrlData, error: signErr } = await supabase.storage
-        .from('memories').createSignedUploadUrl(path)
-      if (signErr || !uploadUrlData?.signedUrl) {
-        setVideoMsg('Upload failed: could not create upload URL')
-        setUploadingVideo(false)
-        return
-      }
+      // ── TUS resumable upload — bypasses Supabase's per-request body limit ──────
+      // Standard PUT uploads fail with 413 for files > ~200 MB because Supabase's
+      // edge proxies enforce a request body ceiling independent of the bucket limit.
+      // TUS sends the file in 5 MB PATCH chunks, each well under that ceiling.
+      const CHUNK = 5 * 1024 * 1024
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      const token = authSession?.access_token
+      if (!token) { setVideoMsg('Not signed in.'); setUploadingVideo(false); return }
 
-      const uploadResult = await FileSystem.uploadAsync(uploadUrlData.signedUrl, videoUri, {
-        httpMethod: 'PUT',
-        headers: { 'Content-Type': videoContentType },
+      const projectUrl = 'https://yfthwahxahjabfbuntys.supabase.co'
+      const encodedMeta = [
+        `bucketName ${btoa('memories')}`,
+        `objectName ${btoa(storagePath)}`,
+        `contentType ${btoa(videoContentType)}`,
+        `cacheControl ${btoa('3600')}`,
+      ].join(',')
+
+      // 1. Create TUS upload session
+      setVideoMsg('Starting upload…')
+      const createResp = await fetch(`${projectUrl}/storage/v1/upload/resumable`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Length': '0',
+          'Upload-Length': String(fileSize),
+          'Tus-Resumable': '1.0.0',
+          'Upload-Metadata': encodedMeta,
+          'x-upsert': 'true',
+        },
       })
-      if (uploadResult.status < 200 || uploadResult.status >= 300) {
-        setVideoMsg(`Upload failed (${uploadResult.status})`)
+      if (createResp.status !== 201) {
+        const body = await createResp.text()
+        setVideoMsg(`Upload failed: could not start (${createResp.status}) ${body.slice(0, 80)}`)
+        setUploadingVideo(false)
+        return
+      }
+      const tusLocation = createResp.headers.get('Location')
+      if (!tusLocation) {
+        setVideoMsg('Upload failed: no upload location returned.')
         setUploadingVideo(false)
         return
       }
 
-      // Get file size for the DB record
-      const fileInfo = await FileSystem.getInfoAsync(videoUri, { size: true })
-      const fileSize = fileInfo.exists ? (fileInfo as any).size ?? 0 : 0
+      // 2. Upload in 5 MB chunks
+      let offset = 0
+      while (offset < fileSize) {
+        const chunkSize = Math.min(CHUNK, fileSize - offset)
+        const b64 = await FileSystem.readAsStringAsync(localUri, {
+          encoding: FileSystem.EncodingType.Base64,
+          position: offset,
+          length: chunkSize,
+        })
+        const bytes = base64ToBytes(b64)
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+
+        const patchResp = await fetch(tusLocation, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/offset+octet-stream',
+            'Content-Length': String(bytes.byteLength),
+            'Upload-Offset': String(offset),
+            'Tus-Resumable': '1.0.0',
+          },
+          body: buffer,
+        })
+        if (patchResp.status !== 204) {
+          const body = await patchResp.text()
+          setVideoMsg(`Upload failed at ${Math.round(offset / 1024 / 1024)} MB (${patchResp.status}): ${body.slice(0, 80)}`)
+          setUploadingVideo(false)
+          return
+        }
+
+        offset += chunkSize
+        const pct = Math.round(Math.min((offset / fileSize) * 100, 100))
+        setVideoUploadPct(pct)
+      }
+      setVideoUploadPct(0)
+      setVideoMsg('')
 
       const { data: newVideoMem, error: dbErr } = await supabase.from('memories').insert({
         user_id:   user.id,
         title:     videoTitle.trim(),
         type:      'video',
         duration:  videoDuration,
-        file_path: path,
+        file_path: storagePath,
         file_name: fileName,
         file_type: videoContentType,
         file_size: fileSize,
       }).select('id, title, type').single()
       if (dbErr) { setVideoMsg('Error saving: ' + dbErr.message); setUploadingVideo(false); return }
       setUploadingVideo(false)
-      closeVideoModal()
-      loadMemories()
+      closeVideoModal(); loadMemories()
       if (newVideoMem) autoOpenScheduleModal(newVideoMem)
     } catch (e: any) { setVideoMsg('Error: ' + e.message); setUploadingVideo(false) }
   }
@@ -1279,6 +1682,22 @@ export default function MemoriesScreen({ navigation }: any) {
     setDeleting(false); setConfirmDelete(null); loadMemories(); loadCapsules()
   }
 
+  // ── Soft-delete a received delivery ───────────────────────────────────────
+  //  Sets dismissed_by_recipient_at on the scheduled_deliveries row.
+  //  The memory itself and the delivery row are NEVER deleted — they stay in
+  //  the database forever so the data can always be restored.
+  async function handleDismissDelivery() {
+    if (!confirmDismiss) return
+    setDismissing(true)
+    await supabase
+      .from('scheduled_deliveries')
+      .update({ dismissed_by_recipient_at: new Date().toISOString() })
+      .eq('id', confirmDismiss.id)
+    setDismissing(false)
+    setConfirmDismiss(null)
+    loadReceivedMemories()
+  }
+
   function formatDate(iso: string) {
     if (!iso) return ''
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -1337,6 +1756,7 @@ export default function MemoriesScreen({ navigation }: any) {
   }
 
   async function savePhotoAlbum() {
+    Keyboard.dismiss()
     if (!photoAlbumTitle.trim()) { setPhotoMsg('Please enter a title for the album.'); return }
     if (photoDraft.length === 0) { setPhotoMsg('Please add at least one photo.'); return }
     setUploadingPhoto(true); setPhotoMsg(''); setPhotoUploadPct(0)
@@ -1348,16 +1768,34 @@ export default function MemoriesScreen({ navigation }: any) {
       let totalSize = 0
       for (let i = 0; i < photoDraft.length; i++) {
         const photo = photoDraft[i]
-        const response = await fetch(photo.uri)
-        const blob = await response.blob()
         const ext = photo.uri.split('.').pop()?.toLowerCase().split('?')[0] || 'jpg'
         const fileName = `photo_${i}.${ext}`
         const path = `${user.id}/albums/${albumId}/${fileName}`
-        const { error: uploadErr } = await supabase.storage.from('memories')
-          .upload(path, blob, { contentType: 'image/jpeg' })
-        if (uploadErr) { setPhotoMsg(`Photo ${i + 1} upload failed: ${uploadErr.message}`); setUploadingPhoto(false); return }
+
+        // fetch(file://).blob() returns an empty blob on iOS — same bug as voice memos.
+        // Fix: use a Supabase signed upload URL + FileSystem.uploadAsync, which streams
+        // the file directly from disk without buffering into memory.
+        const { data: uploadUrlData, error: signErr } = await supabase.storage
+          .from('memories').createSignedUploadUrl(path)
+        if (signErr || !uploadUrlData?.signedUrl) {
+          setPhotoMsg(`Photo ${i + 1}: could not create upload URL — ${signErr?.message ?? 'unknown'}`)
+          setUploadingPhoto(false); return
+        }
+        const uploadResult = await FileSystem.uploadAsync(uploadUrlData.signedUrl, photo.uri, {
+          httpMethod: 'PUT',
+          headers: { 'Content-Type': 'image/jpeg' },
+        })
+        if (uploadResult.status < 200 || uploadResult.status >= 300) {
+          setPhotoMsg(`Photo ${i + 1} upload failed (${uploadResult.status})`)
+          setUploadingPhoto(false); return
+        }
+
+        // Get actual file size for the DB record
+        const fileInfo = await FileSystem.getInfoAsync(photo.uri, { size: true })
+        const fileSize = fileInfo.exists ? (fileInfo as any).size ?? 0 : 0
+
         uploaded.push({ path, caption: photo.caption })
-        totalSize += blob.size
+        totalSize += fileSize
         setPhotoUploadPct(Math.round(((i + 1) / photoDraft.length) * 100))
       }
       const { data: newPhotoMem, error: dbErr } = await supabase.from('memories').insert({
@@ -1372,9 +1810,120 @@ export default function MemoriesScreen({ navigation }: any) {
         file_size:   totalSize,
       }).select('id, title, type').single()
       if (dbErr) { setPhotoMsg('Error saving album: ' + dbErr.message); setUploadingPhoto(false); return }
-      setUploadingPhoto(false); closePhotoModal(); loadMemories()
+      setUploadingPhoto(false)
+      closePhotoModal(); loadMemories()
       if (newPhotoMem) autoOpenScheduleModal(newPhotoMem)
     } catch (e: any) { setPhotoMsg('Error: ' + e.message); setUploadingPhoto(false) }
+  }
+
+  // ── Download a signed URL to a temp cache file, return its local path ────────
+  async function downloadPhotoToTemp(url: string): Promise<string | null> {
+    try {
+      const tempPath = FileSystem.cacheDirectory + `photo_action_${Date.now()}.jpg`
+      const result   = await FileSystem.downloadAsync(url, tempPath)
+      if (result.status !== 200) return null
+      return tempPath
+    } catch { return null }
+  }
+
+  // ── Save current fullscreen photo to the device camera roll ──────────────────
+  async function savePhotoToLibrary() {
+    if (!fullscreenPhoto?.url || photoSaving) return
+    setPhotoSaving(true); setPhotoActionMsg('')
+    try {
+      // Dynamic require so a missing install doesn't break the bundle
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const MediaLibrary = require('expo-media-library')
+      const { status } = await MediaLibrary.requestPermissionsAsync()
+      if (status !== 'granted') {
+        setPhotoActionMsg('Allow photo access in Settings to save.')
+        setPhotoSaving(false); return
+      }
+      const localPath = await downloadPhotoToTemp(fullscreenPhoto.url)
+      if (!localPath) { setPhotoActionMsg('Download failed — try again.'); setPhotoSaving(false); return }
+      await MediaLibrary.saveToLibraryAsync(localPath)
+      setPhotoActionMsg('Saved to Photos ✓')
+      setTimeout(() => setPhotoActionMsg(''), 2500)
+    } catch (e: any) {
+      setPhotoActionMsg('Could not save: ' + e.message)
+    }
+    setPhotoSaving(false)
+  }
+
+  // ── Share current fullscreen photo via the native share sheet ────────────────
+  async function sharePhotoNative() {
+    if (!fullscreenPhoto?.url || photoSharing) return
+    setPhotoSharing(true); setPhotoActionMsg('')
+    try {
+      const localPath = await downloadPhotoToTemp(fullscreenPhoto.url)
+      if (!localPath) { setPhotoActionMsg('Download failed — try again.'); setPhotoSharing(false); return }
+      await Share.share(
+        Platform.OS === 'ios'
+          ? { url: localPath }
+          : { message: fullscreenPhoto.caption || 'A moment from Solace Life', url: localPath }
+      )
+    } catch (e: any) {
+      // User cancelled share = not an error
+      if (!(e as any)?.message?.includes('cancel')) {
+        setPhotoActionMsg('Could not share: ' + e.message)
+      }
+    }
+    setPhotoSharing(false)
+  }
+
+  // ── Save current fullscreen photo to the Media vault ────────────────────────
+  async function saveToVault() {
+    if (!fullscreenPhoto?.url || photoVaulting) return
+    setPhotoVaulting(true); setPhotoActionMsg('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setPhotoActionMsg('Not signed in.'); setPhotoVaulting(false); return }
+
+      const localPath = await downloadPhotoToTemp(fullscreenPhoto.url)
+      if (!localPath) { setPhotoActionMsg('Download failed — try again.'); setPhotoVaulting(false); return }
+
+      const fileName    = `moment_${Date.now()}.jpg`
+      const storagePath = `${user.id}/media/${fileName}`
+
+      // Get a signed upload URL then stream the file
+      const { data: uploadData, error: signErr } = await supabase.storage
+        .from('vault-files')
+        .createSignedUploadUrl(storagePath)
+      if (signErr || !uploadData) {
+        setPhotoActionMsg('Could not reach Vault — try again.')
+        setPhotoVaulting(false); return
+      }
+
+      const uploadResult = await FileSystem.uploadAsync(uploadData.signedUrl, localPath, {
+        httpMethod: 'PUT',
+        headers: { 'Content-Type': 'image/jpeg' },
+      })
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        setPhotoActionMsg('Upload failed — try again.')
+        setPhotoVaulting(false); return
+      }
+
+      const fileInfo = await FileSystem.getInfoAsync(localPath)
+      const fileSize = fileInfo.exists ? (fileInfo as any).size ?? 0 : 0
+
+      const caption = fullscreenPhoto.caption || 'Moment'
+      await supabase.from('vault_items').insert({
+        user_id:     user.id,
+        title:       caption.length > 80 ? caption.slice(0, 77) + '…' : caption,
+        category:    'media',
+        description: 'Saved from Moments',
+        file_path:   storagePath,
+        file_name:   fileName,
+        file_size:   fileSize,
+        file_type:   'image/jpeg',
+      })
+
+      setPhotoActionMsg('Saved to Vault ✓')
+      setTimeout(() => setPhotoActionMsg(''), 2500)
+    } catch (e: any) {
+      setPhotoActionMsg('Could not save to Vault: ' + e.message)
+    }
+    setPhotoVaulting(false)
   }
 
   async function openAlbumDetail(mem: any) {
@@ -1389,8 +1938,6 @@ export default function MemoriesScreen({ navigation }: any) {
       const withUrls = await Promise.all(
         photos.map(async (p, i) => {
           try {
-            // Step 1: get a signed URL — works for own files (self-read policy) and
-            // received files (migration 032 recipient-read policy).
             const { data, error: urlErr } = await supabase.storage
               .from('memories').createSignedUrl(p.path, 3600)
             if (urlErr || !data?.signedUrl) {
@@ -1399,29 +1946,9 @@ export default function MemoriesScreen({ navigation }: any) {
               setAlbumDebug(msg)
               return { signedUrl: '', caption: p.caption }
             }
-
-            // Web: signed URL loads fine in browser <img>
-            if (Platform.OS === 'web') {
-              return { signedUrl: data.signedUrl, caption: p.caption }
-            }
-
-            // Native: download signed URL to local cache so <Image> loads from file://.
-            // Supabase CDN URLs can fail inside React Native's Image component on iOS,
-            // but FileSystem.downloadAsync reliably fetches and caches them.
-            // (Same pattern used for voice memos and video files.)
-            const ext = (p.path.split('.').pop() ?? 'jpg').split('?')[0]
-            const localPath = FileSystem.cacheDirectory + `album_${mem.id}_${i}.${ext}`
-            const existing = await FileSystem.getInfoAsync(localPath)
-            if (!existing.exists) {
-              const dlResult = await FileSystem.downloadAsync(data.signedUrl, localPath)
-              if (dlResult.status !== 200) {
-                const msg = `Photo ${i + 1}: download status ${dlResult.status}. Path: ${p.path}`
-                console.warn('[Album]', msg)
-                setAlbumDebug(msg)
-                return { signedUrl: '', caption: p.caption }
-              }
-            }
-            return { signedUrl: localPath, caption: p.caption }
+            // Use signed URL directly — React Native's Image component handles HTTPS
+            // signed URLs natively for photos (no byte-range streaming needed unlike audio/video).
+            return { signedUrl: data.signedUrl, caption: p.caption }
           } catch (e: any) {
             const msg = `Photo ${i + 1} exception: ${e.message}`
             console.warn('[Album]', msg)
@@ -1529,7 +2056,9 @@ export default function MemoriesScreen({ navigation }: any) {
           <TouchableOpacity style={s.listInfo} onPress={() => { setSuspendedGroup(selectedMemberGroup); setSelectedMemberGroup(null); setViewItem(mem) }} activeOpacity={0.75}>
             <Text style={s.listLabel}>{mem.title}</Text>
             <Text style={s.listDesc} numberOfLines={2}>
-              {mem.content ? mem.content.slice(0, 80) + (mem.content.length > 80 ? '…' : '') : ''}
+              {mem.description
+                ? mem.description
+                : mem.content ? mem.content.slice(0, 80) + (mem.content.length > 80 ? '…' : '') : ''}
             </Text>
             {cap && <Text style={[s.listDesc, { marginTop: 4, color: C.amberLight }]}>📅 Delivers {formatDeliveryDate(cap.scheduled_date)}</Text>}
             <Text style={[s.listDesc, { marginTop: 2, color: C.greyDim }]}>
@@ -1539,20 +2068,25 @@ export default function MemoriesScreen({ navigation }: any) {
         )}
 
         <View style={s.rowActions}>
-          {cap ? (
-            <View style={s.scheduledBadge}><Text style={s.scheduledBadgeIcon}>🔒</Text></View>
-          ) : (
-            <TouchableOpacity onPress={() => { setSuspendedGroup(selectedMemberGroup); setSelectedMemberGroup(null); openScheduleModal(mem) }} style={s.scheduleBtn}>
-              <Text style={s.scheduleBtnIcon}>📅</Text>
-            </TouchableOpacity>
+          {/* Founder welcome memory: no schedule or edit — but user can delete it */}
+          {mem.id !== 'f47a0000-0000-0000-0000-000000000001' && (
+            <>
+              {cap ? (
+                <View style={s.scheduledBadge}><Text style={s.scheduledBadgeIcon}>🔒</Text></View>
+              ) : (
+                <TouchableOpacity onPress={() => { setSuspendedGroup(selectedMemberGroup); setSelectedMemberGroup(null); openScheduleModal(mem) }} style={s.scheduleBtn}>
+                  <Text style={s.scheduleBtnIcon}>📅</Text>
+                </TouchableOpacity>
+              )}
+              {mem.type === 'written' && (
+                <TouchableOpacity onPress={() => { setSuspendedGroup(selectedMemberGroup); setSelectedMemberGroup(null); openEditModal(mem) }} style={s.editBtn}
+                  accessibilityLabel="Edit moment" accessibilityRole="button">
+                  <Text style={s.editBtnIcon}>✏️</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
-          {mem.type === 'written' && (
-            <TouchableOpacity onPress={() => { setSuspendedGroup(selectedMemberGroup); setSelectedMemberGroup(null); openEditModal(mem) }} style={s.editBtn}
-              accessibilityLabel="Edit moment" accessibilityRole="button">
-              <Text style={s.editBtnIcon}>✏️</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={() => setConfirmDelete(mem)} style={s.deleteBtn}
+          <TouchableOpacity onPress={() => { setSuspendedGroup(selectedMemberGroup); setSelectedMemberGroup(null); setConfirmDelete(mem) }} style={s.deleteBtn}
             accessibilityLabel="Delete moment" accessibilityRole="button">
             <Text style={s.deleteBtnIcon}>🗑️</Text>
           </TouchableOpacity>
@@ -1568,48 +2102,11 @@ export default function MemoriesScreen({ navigation }: any) {
         <View style={s.pageHeaderPlain}>
           <Text style={s.pageTitle}>Moments</Text>
           <Text style={s.pageSubtitle}>
-            {'Leave something behind'}
+{"Words they'll carry forever"}
           </Text>
         </View>
 
         {/* Received memories are integrated into the "Memories by Person" cards below */}
-
-        {/* ── Occasion banner — shown when a user-selected occasion is within 30 days ── */}
-        {(() => {
-          const upcoming = getUpcomingOccasions(userOccasionKeys, 30)
-          if (!upcoming.length) return null
-          const nudge = buildOccasionNudge(upcoming[0])
-          const urgent = upcoming[0].daysUntil <= 7
-          return (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {/* open new memory modal */}}
-              style={{
-                marginHorizontal: 20, marginBottom: 16,
-                padding: 16, borderRadius: 16,
-                backgroundColor: urgent ? C.amber + '18' : C.accent + '14',
-                borderWidth: 1.5,
-                borderColor: urgent ? C.amberLight + '88' : C.accent + '55',
-                flexDirection: 'row', alignItems: 'center', gap: 14,
-              }}>
-              <View style={{
-                width: 44, height: 44, borderRadius: 22,
-                backgroundColor: urgent ? C.amber + '22' : C.accent + '22',
-                borderWidth: 1, borderColor: urgent ? C.amberLight + '66' : C.accent + '44',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Text style={{ fontSize: 22 }}>{nudge.icon}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: urgent ? C.amberLight : C.offWhite, fontSize: 13, fontWeight: '700', marginBottom: 3, lineHeight: 18 }}>
-                  {nudge.q}
-                </Text>
-                <Text style={{ color: C.greyDim, fontSize: 12 }}>{nudge.cta}</Text>
-              </View>
-              <Text style={{ color: urgent ? C.amberLight : C.accent, fontSize: 20 }}>›</Text>
-            </TouchableOpacity>
-          )
-        })()}
 
         {/* Playback error toast */}
         {playError && (
@@ -1630,16 +2127,41 @@ export default function MemoriesScreen({ navigation }: any) {
           <Text style={s.sectionTitle}>Add a Moment</Text>
         </View>
         <View style={s.memoryTypeGrid}>
-          {MEMORY_TYPES.map((t) => (
-            <TouchableOpacity key={t.key} style={[s.memoryTypeTile, !t.available && s.memoryTypeTileDim]}
-              onPress={() => t.available ? openMemoryType(t.key) : null} activeOpacity={t.available ? 0.75 : 1}>
-              <Text style={s.memoryTypeIcon}>{t.icon}</Text>
-              <Text style={s.memoryTypeLabel}>{t.label}</Text>
-              {!t.available && (
-                <View style={s.comingSoonBadge}>
-                  <Text style={s.comingSoonText}>Soon</Text>
-                </View>
-              )}
+          {MEMORY_TYPES.map((t, i) => (
+            <TouchableOpacity
+              key={t.key}
+              onPressIn={() => t.available && fireGlow(i)}
+              onPress={() => t.available ? openMemoryType(t.key) : null}
+              activeOpacity={1}
+              style={!t.available && s.memoryTypeTileDim}>
+              <Animated.View style={[s.memoryTypeTile, {
+                borderWidth: 2,
+                borderColor: hueAnims[i].interpolate({
+                  inputRange: [0, 0.33, 0.66, 1, 1.33, 1.66, 2],
+                  outputRange: ['#F06292', '#F48A5A', '#FFD07A', '#F06292', '#F48A5A', '#FFD07A', '#F06292'],
+                }),
+              }]}>
+                {/* Glow burst ring — fires on press, fades as it expands */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    borderRadius: 20,
+                    borderWidth: 3,
+                    borderColor: '#F06292',
+                    opacity: glowAnims[i].opacity,
+                    transform: [{ scale: glowAnims[i].scale }],
+                  }}
+                />
+                <Text style={s.memoryTypeIcon}>{t.icon}</Text>
+                <Text style={s.memoryTypeLabel} numberOfLines={1} adjustsFontSizeToFit>{t.label}</Text>
+                {!t.available && (
+                  <View style={s.comingSoonBadge}>
+                    <Text style={s.comingSoonText}>Soon</Text>
+                  </View>
+                )}
+              </Animated.View>
             </TouchableOpacity>
           ))}
         </View>
@@ -1704,9 +2226,17 @@ export default function MemoriesScreen({ navigation }: any) {
                       const recCount   = matched?.deliveries.length ?? 0
                       const hasBoth    = outCount > 0 && recCount > 0
 
-                      // Pill items: up to 3 outgoing + up to 2 incoming (or up to 3 if no outgoing mix)
-                      const outPills   = groupMemories.slice(0, hasBoth ? 2 : 3)
-                      const recPills   = matched ? matched.deliveries.slice(0, hasBoth ? 1 : 0) : []
+                      // Build single cycler list: outgoing newest→oldest, then received newest→oldest
+                      const sortedOut = [...groupMemories].sort((a, b) =>
+                        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+                      )
+                      const sortedRec = matched
+                        ? [...matched.deliveries]
+                            .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+                            .map(d => ({ ...d.memories, _received: true }))
+                            .filter(Boolean)
+                        : []
+                      const cyclerMems = [...sortedOut, ...sortedRec]
 
                       return (
                         <TouchableOpacity
@@ -1756,44 +2286,7 @@ export default function MemoriesScreen({ navigation }: any) {
                               {hasBoth ? ' · ' : ''}
                               {recCount > 0 ? `${recCount} received` : ''}
                             </Text>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                              {outPills.map((mem: any) => (
-                                <View key={mem.id} style={{
-                                  flexDirection: 'row', alignItems: 'center', gap: 4,
-                                  backgroundColor: C.mauveDim + '55',
-                                  borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3,
-                                }}>
-                                  <Text style={{ fontSize: 12 }}>
-                                    {MEMORY_TYPES.find(t => t.key === mem.type)?.icon || '📖'}
-                                  </Text>
-                                  <Text style={{ color: C.grey, fontSize: 11 }} numberOfLines={1}>
-                                    {mem.title?.slice(0, 18)}{(mem.title?.length ?? 0) > 18 ? '…' : ''}
-                                  </Text>
-                                </View>
-                              ))}
-                              {recPills.map((d: any) => {
-                                const mem = d.memories
-                                if (!mem) return null
-                                return (
-                                  <View key={d.id} style={{
-                                    flexDirection: 'row', alignItems: 'center', gap: 4,
-                                    backgroundColor: C.accent + '22',
-                                    borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3,
-                                    borderWidth: 1, borderColor: C.accent + '33',
-                                  }}>
-                                    <Text style={{ fontSize: 12 }}>📥</Text>
-                                    <Text style={{ color: C.grey, fontSize: 11 }} numberOfLines={1}>
-                                      {mem.title?.slice(0, 14)}{(mem.title?.length ?? 0) > 14 ? '…' : ''}
-                                    </Text>
-                                  </View>
-                                )
-                              })}
-                              {(outCount + recCount) > 3 && (
-                                <Text style={{ color: C.greyDim, fontSize: 12, alignSelf: 'center' }}>
-                                  +{outCount + recCount - 3} more
-                                </Text>
-                              )}
-                            </View>
+                            <MemoryPillCycler memories={cyclerMems} />
                           </View>
 
                           {/* Right — badges + chevron */}
@@ -1958,9 +2451,10 @@ export default function MemoriesScreen({ navigation }: any) {
         transparent
         animationType="slide"
         onRequestClose={() => setSelectedMemberGroup(null)}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setSelectedMemberGroup(null)}>
           {/* Explicit height bypasses s.modalSheet (no size) and s.modalInner (maxHeight:640).
               overflow:hidden keeps the rounded corners. LinearGradient flex:1 fills it. */}
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={{ height: '80%', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={{ flex: 1, paddingHorizontal: 28, paddingTop: 24, paddingBottom: 28 }}>
               {selectedMemberGroup && (() => {
@@ -2127,27 +2621,45 @@ export default function MemoriesScreen({ navigation }: any) {
                                     </Text>
                                   </View>
                                 </View>
-                                {/* 🚩 Report — nested TouchableOpacity intercepts its own touch
-                                    so the outer row tap (open memory) never fires for this button */}
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    setReportTarget({
-                                      deliveryId:     delivery.id,
-                                      familyMemberId: delivery.family_member_id,
-                                      senderId:       delivery.user_id,
-                                      senderName:     group.memberName,
-                                      memoryTitle:    mem.title,
-                                    })
-                                    setReportReason('')
-                                    setReportDetails('')
-                                    setReportMsg('')
-                                    setShowReportModal(true)
-                                  }}
-                                  style={{ paddingHorizontal: 12, paddingVertical: 12, alignSelf: 'center' }}
-                                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                                  activeOpacity={0.7}>
-                                  <Text style={{ fontSize: 15 }}>🚩</Text>
-                                </TouchableOpacity>
+                                {/* Action buttons — report + dismiss (soft-delete) */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                  {/* 🗑️ Dismiss — hides from view, NEVER deletes from database */}
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      setSelectedMemberGroup(null)
+                                      setConfirmDismiss({
+                                        id:    delivery.id,
+                                        title: mem.title,
+                                        senderName: group.memberName,
+                                      })
+                                    }}
+                                    style={{ paddingHorizontal: 10, paddingVertical: 12, alignSelf: 'center' }}
+                                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                                    activeOpacity={0.7}>
+                                    <Text style={{ fontSize: 15 }}>🗑️</Text>
+                                  </TouchableOpacity>
+                                  {/* 🚩 Report — nested TouchableOpacity intercepts its own touch
+                                      so the outer row tap (open memory) never fires for this button */}
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      setReportTarget({
+                                        deliveryId:     delivery.id,
+                                        familyMemberId: delivery.family_member_id,
+                                        senderId:       delivery.user_id,
+                                        senderName:     group.memberName,
+                                        memoryTitle:    mem.title,
+                                      })
+                                      setReportReason('')
+                                      setReportDetails('')
+                                      setReportMsg('')
+                                      setShowReportModal(true)
+                                    }}
+                                    style={{ paddingHorizontal: 10, paddingVertical: 12, alignSelf: 'center' }}
+                                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                                    activeOpacity={0.7}>
+                                    <Text style={{ fontSize: 15 }}>🚩</Text>
+                                  </TouchableOpacity>
+                                </View>
                               </TouchableOpacity>
                             )
                           })}
@@ -2160,19 +2672,22 @@ export default function MemoriesScreen({ navigation }: any) {
               })()}
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Schedule / Time Capsule Modal ── */}
       <Modal visible={showScheduleModal} transparent animationType="slide" onRequestClose={closeScheduleModal}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={closeScheduleModal}>
+          {renderConfirmOverlay()}
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? undefined : 'height'} style={{ width: '100%' }}>
             {/* On web: constrain to a centred dialog so the recipient chips + calendar
                 are both visible without the calendar floating in a sea of whitespace */}
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={[s.modalSheet, Platform.OS === 'web' && {
               maxWidth: 560, alignSelf: 'center', width: '100%',
             }]}>
-              <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '90%' }]}>
+              <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '90%', flexShrink: 1, paddingBottom: 0 }]}>
                 <View style={s.modalHeader}>
                   <Text style={[s.modalTitle, { color: '#3D1020' }]}>
                     {scheduleIsAutoTriggered ? '💌 Who is this for?' : '📅 Schedule Time Capsule'}
@@ -2224,41 +2739,72 @@ export default function MemoriesScreen({ navigation }: any) {
                     </View>
                   ) : (
                     <>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
                       {familyMembers.map(m => {
                           const isSelected = selectedMemberIds.includes(m.id)
                           const unconfirmed = !m.email_confirmed
                           return (
-                            <TouchableOpacity key={m.id}
-                              style={[s.famChip, isSelected && s.famChipActive,
-                                unconfirmed && { borderColor: C.amber + '88', borderWidth: 1.5 }]}
+                            <TouchableOpacity
+                              key={m.id}
+                              style={{
+                                width: 80, height: 96, borderRadius: 14, overflow: 'hidden',
+                                borderWidth: 2.5,
+                                borderColor: isSelected ? '#F06292' : (unconfirmed ? C.amber + '99' : 'transparent'),
+                              }}
                               onPress={() => setSelectedMemberIds(prev =>
                                 isSelected ? prev.filter(id => id !== m.id) : [...prev, m.id]
                               )}
                               accessibilityLabel={`${isSelected ? 'Remove' : 'Add'} ${m.name}`}
                               accessibilityRole="checkbox"
                               accessibilityState={{ checked: isSelected }}
+                              activeOpacity={0.85}
                             >
-                              {isSelected && (
-                                <Text style={s.famChipCheck}>✓</Text>
-                              )}
+                              {/* Photo or initial placeholder */}
                               {memberPhotoUrls[m.id] ? (
                                 <Image
                                   source={{ uri: memberPhotoUrls[m.id] }}
-                                  style={{ width: 40, height: 40, borderRadius: 20, marginRight: 4 }}
+                                  style={StyleSheet.absoluteFillObject}
                                   resizeMode="cover"
                                   onError={() => setMemberPhotoUrls(prev => {
                                     const n = { ...prev }; delete n[m.id]; return n
                                   })}
                                 />
                               ) : (
-                                <Text style={s.famChipAvatar}>{m.name.charAt(0).toUpperCase()}</Text>
+                                <View style={[StyleSheet.absoluteFillObject, {
+                                  backgroundColor: C.mauveDim,
+                                  alignItems: 'center', justifyContent: 'center',
+                                }]}>
+                                  <Text style={{ fontSize: 30, fontWeight: '700', color: '#fff', opacity: 0.55 }}>
+                                    {m.name.charAt(0).toUpperCase()}
+                                  </Text>
+                                </View>
                               )}
-                              <Text style={[s.famChipName, isSelected && s.famChipNameActive]}>
-                                {m.name.split(' ')[0]}
-                              </Text>
-                              {unconfirmed && (
-                                <Text style={{ fontSize: 10, marginLeft: 2 }}>⚠️</Text>
+                              {/* Dark gradient + name overlay */}
+                              <LinearGradient
+                                colors={['transparent', 'rgba(0,0,0,0.75)']}
+                                style={{
+                                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                                  height: 46, justifyContent: 'flex-end',
+                                  paddingHorizontal: 7, paddingBottom: 7,
+                                }}
+                              >
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
+                                  {m.name.split(' ')[0]}
+                                </Text>
+                                {unconfirmed && (
+                                  <Text style={{ fontSize: 8, lineHeight: 10 }}>⚠️ unconfirmed</Text>
+                                )}
+                              </LinearGradient>
+                              {/* Selected checkmark badge */}
+                              {isSelected && (
+                                <View style={{
+                                  position: 'absolute', top: 6, right: 6,
+                                  width: 20, height: 20, borderRadius: 10,
+                                  backgroundColor: '#F06292',
+                                  alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', lineHeight: 14 }}>✓</Text>
+                                </View>
                               )}
                             </TouchableOpacity>
                           )
@@ -2338,7 +2884,15 @@ export default function MemoriesScreen({ navigation }: any) {
                     </View>
                   )}
 
-                  {scheduleMsg ? <Text style={{ color: C.error, fontSize: 13, marginBottom: 12 }}>{scheduleMsg}</Text> : null}
+                </ScrollView>
+
+                {/* ── Sticky footer — always visible above the keyboard ── */}
+                <View style={{
+                  paddingHorizontal: 20, paddingTop: 12,
+                  paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+                  borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.4)',
+                }}>
+                  {scheduleMsg ? <Text style={{ color: C.error, fontSize: 13, marginBottom: 10 }}>{scheduleMsg}</Text> : null}
 
                   <TouchableOpacity onPress={saveScheduledDelivery} disabled={scheduleSaving || selectedMemberIds.length === 0}
                     activeOpacity={0.85} style={{ marginBottom: 8 }}>
@@ -2357,7 +2911,7 @@ export default function MemoriesScreen({ navigation }: any) {
 
                   {scheduleIsAutoTriggered && (
                     <TouchableOpacity onPress={closeScheduleModal} activeOpacity={0.7}
-                      style={{ alignItems: 'center', paddingVertical: 14 }}>
+                      style={{ alignItems: 'center', paddingVertical: 10 }}>
                       <Text style={{ color: '#7A3448', fontSize: 14 }}>Skip — I'll assign this later</Text>
                     </TouchableOpacity>
                   )}
@@ -2365,18 +2919,20 @@ export default function MemoriesScreen({ navigation }: any) {
                   <Text style={[s.scheduleDisclaimer, { color: '#7A3448' }]}>
                     📬 On the scheduled date, each selected recipient will receive an email with access to this moment. Once scheduled, this moment is claimed and cannot be re-scheduled.
                   </Text>
-
-                </ScrollView>
+                </View>
               </LinearGradient>
             </View>
+            </TouchableOpacity>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Photo Album Creation Modal ── */}
       <Modal visible={showPhotoModal} transparent animationType="slide" onRequestClose={closePhotoModal}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={closePhotoModal}>
+          {renderConfirmOverlay()}
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? undefined : 'height'} style={{ width: '100%' }}>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={s.modalSheet}>
               <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '92%' }]}>
                 <View style={s.modalHeader}>
@@ -2432,18 +2988,18 @@ export default function MemoriesScreen({ navigation }: any) {
 
                   <Text style={[s.fieldLabel, { color: '#7A3448' }]}>Album Title *</Text>
                   <TextInput
-                    style={s.input}
+                    style={[s.input, { backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(255,255,255,0.7)', color: '#3D1020' }]}
                     placeholder="e.g. Our Family Summer, Wedding Day"
-                    placeholderTextColor={C.greyDim}
+                    placeholderTextColor="#7A3448"
                     value={photoAlbumTitle}
                     onChangeText={setPhotoAlbumTitle}
                   />
 
                   <Text style={[s.fieldLabel, { color: '#7A3448' }]}>Description (optional)</Text>
                   <TextInput
-                    style={[s.input, { height: 70, textAlignVertical: 'top' }]}
+                    style={[s.input, { height: 70, textAlignVertical: 'top', backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(255,255,255,0.7)', color: '#3D1020' }]}
                     placeholder="A few words about this album…"
-                    placeholderTextColor={C.greyDim}
+                    placeholderTextColor="#7A3448"
                     value={photoAlbumDesc}
                     onChangeText={setPhotoAlbumDesc}
                     multiline
@@ -2476,129 +3032,213 @@ export default function MemoriesScreen({ navigation }: any) {
                 </ScrollView>
               </LinearGradient>
             </View>
+            </TouchableOpacity>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
-      {/* ── Album Detail Viewer Modal ── */}
+      {/* ── Album Detail + Fullscreen Viewer — single modal, no iOS stacking issue ── */}
       <Modal
         visible={!!viewAlbum}
         transparent
         animationType="slide"
-        onRequestClose={() => { setViewAlbum(null); setAlbumPhotos([]); setAlbumDebug('') }}>
+        onRequestClose={() => {
+          if (fullscreenPhoto) { setFullscreenPhoto(null); setPhotoActionMsg('') }
+          else { setViewAlbum(null); setAlbumPhotos([]); setAlbumDebug('') }
+        }}>
         <View style={s.albumDetailOverlay}>
-          <View style={s.albumDetailHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.albumDetailTitle} numberOfLines={2}>{viewAlbum?.title}</Text>
-              {viewAlbum?.description ? (
-                <Text style={s.albumDetailDesc} numberOfLines={2}>{viewAlbum.description}</Text>
-              ) : null}
-            </View>
-            <TouchableOpacity
-              onPress={() => { setViewAlbum(null); setAlbumPhotos([]); setAlbumDebug('') }}
-              style={s.videoPlayerCloseBtn}
-              accessibilityLabel="Close album"
-              accessibilityRole="button">
-              <Text style={s.videoPlayerCloseIcon}>✕</Text>
-            </TouchableOpacity>
-          </View>
 
-          {albumLoading ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <ActivityIndicator color={C.amber} size="large" />
-              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>Loading photos…</Text>
-            </View>
-          ) : albumPhotos.length === 0 ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 }}>
-              <Text style={{ fontSize: 44 }}>📷</Text>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' }}>
-                No photos found
-              </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-                The photos in this album couldn't be loaded. They may still be uploading, or try reopening the album.
-              </Text>
-              {!!albumDebug && (
-                <Text style={{ color: '#FFD07A', fontSize: 13, textAlign: 'center', marginTop: 12, lineHeight: 18, paddingHorizontal: 8 }}>
-                  {albumDebug}
-                </Text>
-              )}
-            </View>
-          ) : (
-            <ScrollView contentContainerStyle={s.albumGrid}>
-              {albumPhotos.map((photo, i) => (
+          {/* ── FULLSCREEN VIEW — shown when a photo is tapped ── */}
+          {fullscreenPhoto ? (
+            <View style={{ flex: 1, backgroundColor: '#000' }}>
+
+              {/* Top bar */}
+              <View style={{
+                paddingTop: Platform.OS === 'ios' ? 56 : 24,
+                paddingHorizontal: 20, paddingBottom: 12,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+              }}>
                 <TouchableOpacity
-                  key={i}
-                  style={s.albumGridCell}
-                  onPress={() => photo.signedUrl ? setFullscreenPhoto({ url: photo.signedUrl, caption: photo.caption }) : null}
-                  activeOpacity={0.85}>
-                  {photo.signedUrl ? (
-                    <Image
-                      source={{ uri: photo.signedUrl }}
-                      style={s.albumGridImg}
-                      resizeMode="cover"
-                      onError={() => {
-                        // Replace broken URL with empty string so the placeholder renders
-                        setAlbumPhotos(prev => prev.map((p, idx) =>
-                          idx === i ? { ...p, signedUrl: '' } : p
-                        ))
-                      }}
-                    />
-                  ) : (
-                    <View style={[s.albumGridImg, { backgroundColor: C.mauveDim, alignItems: 'center', justifyContent: 'center' }]}>
-                      <Text style={{ fontSize: 28 }}>📸</Text>
-                      {!!albumDebug && (
-                        <Text style={{ color: '#FFD07A', fontSize: 11, textAlign: 'center', marginTop: 4, paddingHorizontal: 4, lineHeight: 14 }}>
-                          {albumDebug}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-                  {photo.caption ? (
-                    <View style={s.albumGridCaption}>
-                      <Text style={s.albumGridCaptionText} numberOfLines={2}>{photo.caption}</Text>
-                    </View>
-                  ) : null}
+                  onPress={() => { setFullscreenPhoto(null); setPhotoActionMsg('') }}
+                  style={{ padding: 8 }}
+                  accessibilityLabel="Back to album"
+                  accessibilityRole="button">
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>‹ Album</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-      </Modal>
+                <TouchableOpacity
+                  onPress={() => { setFullscreenPhoto(null); setPhotoActionMsg(''); setViewAlbum(null); setAlbumPhotos([]); setAlbumDebug('') }}
+                  style={s.videoPlayerCloseBtn}
+                  accessibilityLabel="Close"
+                  accessibilityRole="button">
+                  <Text style={s.videoPlayerCloseIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-      {/* ── Fullscreen Photo Viewer ── */}
-      <Modal
-        visible={!!fullscreenPhoto}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setFullscreenPhoto(null)}
-        statusBarTranslucent>
-        <View style={s.fullscreenOverlay}>
-          <TouchableOpacity
-            style={s.fullscreenClose}
-            onPress={() => setFullscreenPhoto(null)}
-            accessibilityLabel="Close photo"
-            accessibilityRole="button">
-            <Text style={s.videoPlayerCloseIcon}>✕</Text>
-          </TouchableOpacity>
-          {fullscreenPhoto?.url ? (
-            <Image
-              source={{ uri: fullscreenPhoto.url }}
-              style={s.fullscreenImg}
-              resizeMode="contain"
-            />
-          ) : null}
-          {fullscreenPhoto?.caption ? (
-            <View style={s.fullscreenCaption}>
-              <Text style={s.fullscreenCaptionText}>{fullscreenPhoto.caption}</Text>
+              {/* Full-size photo */}
+              <Image
+                source={{ uri: fullscreenPhoto.url }}
+                style={{ flex: 1, width: '100%' }}
+                resizeMode="contain"
+              />
+
+              {/* Caption */}
+              {fullscreenPhoto.caption ? (
+                <View style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <Text style={{ color: '#fff', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+                    {fullscreenPhoto.caption}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Feedback message */}
+              {!!photoActionMsg && (
+                <View style={{ alignItems: 'center', paddingVertical: 6, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <Text style={{ color: '#FFD07A', fontSize: 14, fontWeight: '600' }}>{photoActionMsg}</Text>
+                </View>
+              )}
+
+              {/* Action bar */}
+              <View style={{
+                flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                paddingVertical: 16,
+                paddingBottom: Platform.OS === 'ios' ? 36 : 16,
+                borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
+              }}>
+                <TouchableOpacity
+                  onPress={savePhotoToLibrary}
+                  disabled={photoSaving}
+                  style={{ alignItems: 'center', gap: 4, paddingHorizontal: 20 }}
+                  accessibilityLabel="Save to Photos" accessibilityRole="button">
+                  {photoSaving
+                    ? <ActivityIndicator color="#FFD07A" size="small" />
+                    : <Text style={{ fontSize: 26 }}>📥</Text>}
+                  <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' }}>Save</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={saveToVault}
+                  disabled={photoVaulting}
+                  style={{ alignItems: 'center', gap: 4, paddingHorizontal: 20 }}
+                  accessibilityLabel="Save to Vault" accessibilityRole="button">
+                  {photoVaulting
+                    ? <ActivityIndicator color="#FFD07A" size="small" />
+                    : <Text style={{ fontSize: 26 }}>🔐</Text>}
+                  <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' }}>Vault</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={sharePhotoNative}
+                  disabled={photoSharing}
+                  style={{ alignItems: 'center', gap: 4, paddingHorizontal: 20 }}
+                  accessibilityLabel="Share" accessibilityRole="button">
+                  {photoSharing
+                    ? <ActivityIndicator color="#FFD07A" size="small" />
+                    : <Text style={{ fontSize: 26 }}>🔗</Text>}
+                  <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' }}>Share</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          ) : null}
+
+          ) : (
+            /* ── GRID VIEW — default state ── */
+            <>
+              <View style={s.albumDetailHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.albumDetailTitle} numberOfLines={2}>{viewAlbum?.title}</Text>
+                  {viewAlbum?.description ? (
+                    <Text style={s.albumDetailDesc} numberOfLines={2}>{viewAlbum.description}</Text>
+                  ) : null}
+                </View>
+                <TouchableOpacity
+                  onPress={() => { setViewAlbum(null); setAlbumPhotos([]); setAlbumDebug('') }}
+                  style={s.videoPlayerCloseBtn}
+                  accessibilityLabel="Close album"
+                  accessibilityRole="button">
+                  <Text style={s.videoPlayerCloseIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {albumLoading ? (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                  <ActivityIndicator color={C.amber} size="large" />
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>Loading photos…</Text>
+                </View>
+              ) : albumPhotos.length === 0 ? (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 }}>
+                  <Text style={{ fontSize: 44 }}>📷</Text>
+                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' }}>No photos found</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+                    The photos in this album couldn't be loaded. They may still be uploading, or try reopening the album.
+                  </Text>
+                  {!!albumDebug && (
+                    <Text style={{ color: '#FFD07A', fontSize: 13, textAlign: 'center', marginTop: 12, lineHeight: 18, paddingHorizontal: 8 }}>
+                      {albumDebug}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <ScrollView contentContainerStyle={s.albumGrid}>
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', width: '100%', paddingBottom: 8 }}>
+                    Tap a photo to enlarge
+                  </Text>
+                  {albumPhotos.map((photo, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={s.albumGridCell}
+                      onPress={() => {
+                        if (photo.signedUrl) {
+                          setPhotoActionMsg('')
+                          setFullscreenPhoto({ url: photo.signedUrl, caption: photo.caption })
+                        }
+                      }}
+                      activeOpacity={0.75}>
+                      {photo.signedUrl ? (
+                        <View>
+                          <Image
+                            source={{ uri: photo.signedUrl }}
+                            style={s.albumGridImg}
+                            resizeMode="cover"
+                            onError={() => {
+                              setAlbumPhotos(prev => prev.map((p, idx) =>
+                                idx === i ? { ...p, signedUrl: '' } : p
+                              ))
+                            }}
+                          />
+                          <View style={{
+                            position: 'absolute', bottom: 6, right: 6,
+                            backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 6,
+                            paddingHorizontal: 6, paddingVertical: 3,
+                          }}>
+                            <Text style={{ fontSize: 12, color: '#fff' }}>⤢</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={[s.albumGridImg, { backgroundColor: C.mauveDim, alignItems: 'center', justifyContent: 'center' }]}>
+                          <Text style={{ fontSize: 28 }}>📸</Text>
+                        </View>
+                      )}
+                      {photo.caption ? (
+                        <View style={s.albumGridCaption}>
+                          <Text style={s.albumGridCaptionText} numberOfLines={2}>{photo.caption}</Text>
+                        </View>
+                      ) : null}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </>
+          )}
         </View>
       </Modal>
 
       {/* ── Video Capture / Upload Modal ── */}
       <Modal visible={showVideoModal} transparent animationType="slide" onRequestClose={closeVideoModal}>
-        <View style={s.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? undefined : 'height'} style={{ width: '100%' }}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={closeVideoModal}>
+          {renderConfirmOverlay()}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={s.modalSheet}>
               <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={s.modalInner}>
                 <View style={s.modalHeader}>
@@ -2608,7 +3248,7 @@ export default function MemoriesScreen({ navigation }: any) {
 
                 {!videoUri ? (
                   <View style={s.videoPickWrap}>
-                    <Text style={[s.videoPickHint, { color: '#7A3448' }]}>Record a new video or choose one from your library. Maximum 5 minutes.</Text>
+                    <Text style={[s.videoPickHint, { color: '#7A3448' }]}>Record a new video or choose one from your library. Maximum 2 minutes — video is automatically optimised for sharing.</Text>
 
                     <TouchableOpacity
                       onPress={recordVideo}
@@ -2656,13 +3296,39 @@ export default function MemoriesScreen({ navigation }: any) {
 
                     <Text style={[s.fieldLabel, { marginTop: 20, color: '#7A3448' }]}>Title *</Text>
                     <TextInput
-                      style={[s.input, { width: '100%' }]}
+                      style={[s.input, { width: '100%', backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(255,255,255,0.7)', color: '#3D1020' }]}
                       placeholder="e.g. A message to my grandchildren"
-                      placeholderTextColor={C.greyDim}
+                      placeholderTextColor="#7A3448"
                       value={videoTitle}
-                      onChangeText={setVideoTitle} />
+                      onChangeText={setVideoTitle}
+                      returnKeyType="done"
+                      onSubmitEditing={() => saveVideoMemory()} />
 
-                    {videoMsg ? <Text style={{ color: C.error, fontSize: 13, marginBottom: 8 }}>{videoMsg}</Text> : null}
+                    {uploadingVideo && videoUploadPct > 0 ? (
+                      <View style={{ backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '500' }}>Saving to Memories...</Text>
+                          <Text style={{ color: '#FFD07A', fontSize: 11, fontWeight: '600' }}>{videoUploadPct}%</Text>
+                        </View>
+                        <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 3, overflow: 'hidden' }}>
+                          <Animated.View style={{
+                            height: '100%',
+                            borderRadius: 3,
+                            overflow: 'hidden',
+                            width: videoBarAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                          }}>
+                            <LinearGradient
+                              colors={['#F06292', '#FFD07A']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={{ flex: 1 }}
+                            />
+                          </Animated.View>
+                        </View>
+                      </View>
+                    ) : videoMsg ? (
+                      <Text style={{ color: C.error, fontSize: 13, marginBottom: 8 }}>{videoMsg}</Text>
+                    ) : null}
 
                     <TouchableOpacity onPress={saveVideoMemory} disabled={uploadingVideo} activeOpacity={0.85} style={{ width: '100%', marginTop: 8 }}>
                       <LinearGradient colors={[C.amberLight, C.amber, '#C07840']} style={s.btnPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -2679,8 +3345,9 @@ export default function MemoriesScreen({ navigation }: any) {
                 )}
               </LinearGradient>
             </View>
+            </TouchableOpacity>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Full-Screen Video Player Modal ── */}
@@ -2693,8 +3360,10 @@ export default function MemoriesScreen({ navigation }: any) {
 
       {/* ── Voice Memo Modal ── */}
       <Modal visible={showVoiceModal} transparent animationType="slide" onRequestClose={closeVoiceModal}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={closeVoiceModal}>
+          {renderConfirmOverlay()}
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={s.modalSheet}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={s.modalInner}>
               <View style={s.modalHeader}>
@@ -2720,33 +3389,88 @@ export default function MemoriesScreen({ navigation }: any) {
                     </Text>
                   </>
                 ) : (
+                  /* ── Option G player — post-recording ── */
                   <>
-                    <View style={s.recDoneWrap}>
-                      <Text style={s.recDoneIcon}>✅</Text>
-                      <Text style={[s.recDoneText, { color: '#3D1020' }]}>Recorded — {fmtDuration(recDuration)}</Text>
-                      <TouchableOpacity onPress={() => { setRecordedUri(null); setRecDuration(0) }}>
-                        <Text style={[s.recRetake, { color: '#3D1020' }]}>↺ Record again</Text>
-                      </TouchableOpacity>
+                    {/* Header */}
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#3D1020', textAlign: 'center', marginBottom: 4 }}>
+                      Your voice memo is ready
+                    </Text>
+                    <Text style={{ fontSize: 15, color: '#7A3448', textAlign: 'center', marginBottom: 24 }}>
+                      {fmtDuration(recDuration)} — listen before you save
+                    </Text>
+
+                    {/* Giant play / pause button */}
+                    <TouchableOpacity onPress={playPauseVoice} activeOpacity={0.85} style={{ alignSelf: 'center', marginBottom: 8 }}>
+                      <View style={{
+                        width: 100, height: 100, borderRadius: 50,
+                        backgroundColor: '#F06292',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Text style={{ fontSize: 48, color: '#fff', lineHeight: 56 }}>
+                          {isPlaying ? '⏸' : '▶'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 14, color: '#7A3448', textAlign: 'center', marginBottom: 20 }}>
+                      {isPlaying ? 'Playing…' : 'Tap to listen'}
+                    </Text>
+
+                    {/* Scrubber */}
+                    <View style={{ width: '100%', marginBottom: 20 }}>
+                      <View style={{ width: '100%', height: 8, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
+                        <View style={{
+                          height: 8, borderRadius: 4, backgroundColor: '#3D1020',
+                          width: playbackDur > 0 ? `${Math.min(100, (playbackPos / playbackDur) * 100)}%` : '0%',
+                        }} />
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: '#7A3448' }}>{fmtDuration(Math.floor(playbackPos / 1000))}</Text>
+                        <Text style={{ fontSize: 13, color: '#7A3448' }}>{fmtDuration(recDuration)}</Text>
+                      </View>
                     </View>
-                    <Text style={[s.fieldLabel, { alignSelf: 'flex-start', marginTop: 20, color: '#7A3448' }]}>Title *</Text>
+
+                    {/* Title input */}
+                    <Text style={[s.fieldLabel, { alignSelf: 'flex-start', color: '#7A3448' }]}>Title *</Text>
                     <TextInput
-                      style={[s.input, { width: '100%' }]}
+                      style={[s.input, { width: '100%', backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(255,255,255,0.7)', color: '#3D1020' }]}
                       placeholder="e.g. Message to my family"
-                      placeholderTextColor={C.greyDim}
+                      placeholderTextColor="#7A3448"
                       value={voiceTitle}
                       onChangeText={setVoiceTitle} />
                     {voiceMsg ? <Text style={{ color: C.error, fontSize: 13, marginBottom: 8 }}>{voiceMsg}</Text> : null}
-                    <TouchableOpacity onPress={saveVoiceMemo} disabled={uploadingVoice} activeOpacity={0.85} style={{ width: '100%', marginTop: 4 }}>
-                      <LinearGradient colors={[C.amberLight, C.amber, '#C07840']} style={s.btnPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                        {uploadingVoice
-                          ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                              <ActivityIndicator color={C.bg1} />
-                              <Text style={s.btnPrimaryText}>Uploading…</Text>
-                            </View>
-                          : <Text style={s.btnPrimaryText}>Save Voice Memo</Text>
-                        }
-                      </LinearGradient>
-                    </TouchableOpacity>
+
+                    {/* Two large action buttons */}
+                    <View style={{ flexDirection: 'row', gap: 12, width: '100%', marginTop: 8 }}>
+                      {/* Re-record */}
+                      <TouchableOpacity
+                        onPress={() => { stopVoicePlayer(); setRecordedUri(null); setRecDuration(0) }}
+                        activeOpacity={0.85}
+                        style={{ flex: 1 }}>
+                        <View style={{
+                          borderRadius: 16, paddingVertical: 20, alignItems: 'center', justifyContent: 'center', gap: 6,
+                          borderWidth: 2, borderColor: 'rgba(61,16,32,0.35)',
+                          backgroundColor: 'rgba(255,255,255,0.35)',
+                        }}>
+                          <Text style={{ fontSize: 26 }}>↺</Text>
+                          <Text style={{ fontSize: 16, fontWeight: '700', color: '#3D1020' }}>Re-record</Text>
+                        </View>
+                      </TouchableOpacity>
+                      {/* Save */}
+                      <TouchableOpacity onPress={saveVoiceMemo} disabled={uploadingVoice} activeOpacity={0.85} style={{ flex: 1 }}>
+                        <View style={{
+                          borderRadius: 16, paddingVertical: 20, alignItems: 'center', justifyContent: 'center', gap: 6,
+                          backgroundColor: uploadingVoice ? 'rgba(61,16,32,0.5)' : '#3D1020',
+                        }}>
+                          {uploadingVoice
+                            ? <ActivityIndicator color="#FFD07A" />
+                            : <>
+                                <Text style={{ fontSize: 26 }}>💾</Text>
+                                <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFD07A' }}>Save memo</Text>
+                              </>
+                          }
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 )}
                 {voiceMsg && !recordedUri ? <Text style={{ color: C.error, fontSize: 13, marginTop: 12, textAlign: 'center' }}>{voiceMsg}</Text> : null}
@@ -2754,17 +3478,22 @@ export default function MemoriesScreen({ navigation }: any) {
 
             </LinearGradient>
           </View>
+          </TouchableOpacity>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Written Story Create / Edit Modal ── */}
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={closeModal}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={closeModal}>
           {/* Sized View MUST be a direct child of the flex:1 overlay — only then does
               height:'92%' resolve to a real pixel value (92% of screen height).
               Putting it inside KeyboardAvoidingView breaks percentage resolution. */}
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={{ height: '92%', width: '100%', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
+
+          {/* ── Success confirmation ── */}
+          {renderConfirmOverlay()}
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ flex: 1 }}
@@ -2842,20 +3571,6 @@ export default function MemoriesScreen({ navigation }: any) {
                           value={form.title} onChangeText={v => setForm(f => ({ ...f, title: v }))} />
 
                         <Text style={[s.fieldLabel, { color: '#8B6228', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' }]}>
-                          Short Description (optional)
-                        </Text>
-                        <TextInput
-                          style={{
-                            backgroundColor: '#FFFDF5', borderWidth: 1, borderColor: '#D4B483',
-                            borderRadius: 10, padding: 14, color: '#3D1E05', fontSize: 16,
-                            marginBottom: 14,
-                            fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-                          }}
-                          placeholder="What is this moment about?"
-                          placeholderTextColor="#B8975A"
-                          value={form.description} onChangeText={v => setForm(f => ({ ...f, description: v }))} />
-
-                        <Text style={[s.fieldLabel, { color: '#8B6228', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' }]}>
                           Your Story *
                         </Text>
                         {/* Auto-expanding cream writing area — grows with content, no hard cap */}
@@ -2870,7 +3585,7 @@ export default function MemoriesScreen({ navigation }: any) {
                           }} />
                           <TextInput
                             style={{
-                              minHeight: 112,   // 4 lines × 28px — grows naturally, no state needed
+                              minHeight: 196,   // ~7 lines × 28px — grows naturally, no state needed
                               textAlignVertical: 'top',
                               paddingLeft: 52, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
                               color: '#3D1E05', fontSize: 16, lineHeight: 28,
@@ -2884,6 +3599,15 @@ export default function MemoriesScreen({ navigation }: any) {
                             textAlignVertical="top"
                             scrollEnabled={false}
                           />
+                          {/* ── Word / character count — inside the box so it's never keyboard-obscured ── */}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, paddingTop: 4 }}>
+                            <Text style={{ color: '#8B6228', fontSize: 12, fontStyle: 'italic', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' }}>
+                              ✦ {form.content.trim() ? form.content.trim().split(/\s+/).length : 0} words
+                            </Text>
+                            <Text style={{ color: '#B8975A', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' }}>
+                              {form.content.length.toLocaleString()} characters · no limit
+                            </Text>
+                          </View>
                         </View>
 
                         {/* ── Keyboard dictation tip ── */}
@@ -2904,21 +3628,6 @@ export default function MemoriesScreen({ navigation }: any) {
                               <Text style={{ fontWeight: '700' }}>🎤 microphone</Text> on your keyboard to speak.
                             </Text>
                           </View>
-                        </View>
-
-                        <View style={[s.wordCountRow, { flexDirection: 'row', justifyContent: 'space-between' }]}>
-                          <Text style={{
-                            color: '#8B6228', fontSize: 12, fontStyle: 'italic',
-                            fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-                          }}>
-                            ✦ {form.content.trim() ? form.content.trim().split(/\s+/).length : 0} words
-                          </Text>
-                          <Text style={{
-                            color: '#B8975A', fontSize: 11,
-                            fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-                          }}>
-                            {form.content.length.toLocaleString()} characters · no limit
-                          </Text>
                         </View>
                         {saveMsg ? <Text style={{ color: C.error, fontSize: 14, marginBottom: 12 }}>{saveMsg}</Text> : null}
                         <TouchableOpacity
@@ -3101,13 +3810,15 @@ export default function MemoriesScreen({ navigation }: any) {
               </LinearGradient>
             </KeyboardAvoidingView>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── View / Read Modal ── */}
       {/* ── Written Memory Viewer — Letter on paper ── */}
       <Modal visible={!!viewItem} transparent animationType="slide" onRequestClose={() => setViewItem(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setViewItem(null)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={{
             height: '92%',
             borderTopLeftRadius: 28, borderTopRightRadius: 28,
@@ -3215,12 +3926,40 @@ export default function MemoriesScreen({ navigation }: any) {
               </View>
             </ScrollView>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Dismiss Received Memory Confirmation ── */}
+      {/* Soft-delete only — the memory is NEVER removed from the database */}
+      <Modal visible={!!confirmDismiss} transparent animationType="fade" onRequestClose={() => setConfirmDismiss(null)}>
+        <TouchableOpacity style={s.confirmOverlay} activeOpacity={1} onPress={() => setConfirmDismiss(null)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={s.confirmBox}>
+            <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={s.confirmInner}>
+              <Text style={s.confirmIcon}>🕯️</Text>
+              <Text style={[s.confirmTitle, { color: '#3D1020' }]}>Delete this moment?</Text>
+              <Text style={[s.confirmBody, { color: '#7A3448' }]}>
+                {`"${confirmDismiss?.title}" will be gone.\n\nThis was recorded once, for you. It cannot be sent again.`}
+              </Text>
+              <View style={s.confirmActions}>
+                <TouchableOpacity style={[s.confirmCancel, { borderColor: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.78)' }]} onPress={() => setConfirmDismiss(null)}>
+                  <Text style={[s.confirmCancelText, { color: '#3D1020' }]}>Keep it</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.confirmDelete, { backgroundColor: '#F06292', borderColor: '#F06292' }]} onPress={handleDismissDelivery} disabled={dismissing}>
+                  {dismissing ? <ActivityIndicator color={C.white} /> : <Text style={[s.confirmDeleteText, { color: '#3D1020' }]}>Delete forever</Text>}
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Delete Confirmation ── */}
       <Modal visible={!!confirmDelete} transparent animationType="fade" onRequestClose={() => setConfirmDelete(null)}>
-        <View style={s.confirmOverlay}>
+        <TouchableOpacity style={s.confirmOverlay} activeOpacity={1} onPress={() => setConfirmDelete(null)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={s.confirmBox}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={s.confirmInner}>
               <Text style={s.confirmIcon}>🗑️</Text>
@@ -3238,12 +3977,15 @@ export default function MemoriesScreen({ navigation }: any) {
               </View>
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Abuse Report Modal ── */}
       <Modal visible={showReportModal} transparent animationType="slide" onRequestClose={() => setShowReportModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <TouchableOpacity style={{ flex: 1, justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowReportModal(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={{ padding: 24 }}>
 
@@ -3338,7 +4080,9 @@ export default function MemoriesScreen({ navigation }: any) {
 
             </LinearGradient>
           </View>
-        </KeyboardAvoidingView>
+          </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
       </Modal>
 
     </ScreenWrap>

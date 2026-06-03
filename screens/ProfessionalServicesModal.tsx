@@ -13,9 +13,9 @@ const SERVICES = [
   { key: 'real_estate',      label: 'Real Estate',        icon: '🏠',  desc: 'Listing, buying, property transfers' },
   { key: 'financial',        label: 'Financial Advisor',  icon: '💰',  desc: 'Investments, retirement, estate planning' },
   { key: 'tax_cpa',          label: 'Tax & CPA',          icon: '📊',  desc: 'Estate taxes, capital gains, filings' },
-  { key: 'grief_counsellor', label: 'Grief Counsellor',   icon: '💙',  desc: 'Support through loss and transition' },
+  { key: 'grief_counsellor', label: 'Counsellor',          icon: '💙',  desc: 'Support through difficult times and life transitions' },
   { key: 'senior_living',    label: 'Senior Living',      icon: '🏡',  desc: 'Care homes and placement options' },
-  { key: 'funeral',          label: 'Funeral Services',   icon: '🕊️',  desc: 'Pre-planning and arrangements' },
+  { key: 'funeral',          label: 'End-of-Life Planning', icon: '🕊️',  desc: 'Arrangements and guidance' },
   { key: 'probate',          label: 'Probate Services',   icon: '📋',  desc: 'Estate administration and probate' },
 ]
 
@@ -25,9 +25,9 @@ const MESSAGE_PLACEHOLDERS: Record<string, string> = {
   real_estate:      "Briefly describe your situation — e.g., 'selling a property from an estate' or 'property transfer to family.'",
   financial:        "Briefly describe your planning goal — e.g., 'retirement planning' or 'estate transfer.' Please do not include specific account, asset, or investment details here.",
   tax_cpa:          "Briefly describe your need — e.g., 'estate tax filing' or 'capital gains guidance.'",
-  grief_counsellor: "Briefly describe what you're looking for — e.g., 'grief support after a loss' or 'family counselling.'",
+  grief_counsellor: "Briefly describe what you're looking for — e.g., 'support through a difficult time' or 'someone to talk to.'",
   senior_living:    "Briefly describe your situation — e.g., 'exploring care options for a parent' or 'assisted living placement.'",
-  funeral:          "Briefly describe what you're looking for — e.g., 'pre-planning arrangements' or 'immediate assistance.'",
+  funeral:          "Briefly describe what you're looking for — e.g., 'pre-planning guidance' or 'what support you need.'",
   probate:          "Briefly describe the estate matter — e.g., 'estate administration assistance' or 'probate filing help.'",
 }
 
@@ -114,8 +114,9 @@ export default function ProfessionalServicesModal({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
+      <TouchableOpacity style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }} activeOpacity={1} onPress={handleClose}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? undefined : 'height'} style={{ width: '100%' }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <LinearGradient colors={WARM} style={{
             borderTopLeftRadius: 24, borderTopRightRadius: 24,
             padding: 24, maxHeight: '92%',
@@ -361,8 +362,9 @@ export default function ProfessionalServicesModal({ visible, onClose }: Props) {
             )}
 
           </LinearGradient>
+          </TouchableOpacity>
         </KeyboardAvoidingView>
-      </View>
+      </TouchableOpacity>
     </Modal>
   )
 }

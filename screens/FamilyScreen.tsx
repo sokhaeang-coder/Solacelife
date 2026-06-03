@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigation } from '@react-navigation/native'
 import { Text, View, TouchableOpacity, TextInput, ActivityIndicator,
   ScrollView, FlatList, Modal, KeyboardAvoidingView, Platform, Image,
   Alert, Linking } from 'react-native'
@@ -15,26 +16,40 @@ import { CalendarPicker } from '../components/CalendarPicker'
 import { refreshEmergencyNotification } from '../lib/emergencyNotification'
 
 // ─────────────────────────────────────────────────────────────────────────────
-const RELATIONSHIPS = ['Spouse', 'Child', 'Parent', 'Sibling', 'Friend', 'Other']
+const RELATIONSHIPS = ['Husband', 'Wife', 'Partner', 'Child', 'Mother', 'Father', 'Brother', 'Sister', 'Friend', 'Other']
 
 // Maps G1's label FOR G2 → the standard label G2 should see for G1.
-// E.g. G1 called G2 "Wife" → G2 sees G1 as "Spouse"
-//      G1 called G2 "Child" → G2 sees G1 as "Parent"
+// E.g. G1 called G2 "Husband" → G2 (husband) sees G1 as "Wife"
+//      G1 called G2 "Mother"  → G2 sees G1 as "Child"
+//      G1 called G2 "Child"   → G2 sees G1 as "Parent" (gender unknown)
 // Returns null for unknown labels so no badge is shown rather than something confusing.
 function getReciprocalLabel(label: string | null): string | null {
   if (!label) return null
   switch (label.toLowerCase().trim()) {
-    case 'spouse': case 'wife': case 'husband': case 'partner': case 'life partner':
+    case 'husband':
+      return 'Wife'
+    case 'wife':
+      return 'Husband'
+    case 'partner': case 'life partner':
+      return 'Partner'
+    case 'spouse':   // legacy — keep working for existing DB rows
       return 'Spouse'
     case 'child': case 'son': case 'daughter': case 'kid':
     case 'stepchild': case 'stepson': case 'stepdaughter':
       return 'Parent'
-    case 'parent': case 'mother': case 'father': case 'mom': case 'dad':
-    case 'mum': case 'mama': case 'papa': case 'stepmom': case 'stepdad':
-    case 'stepmother': case 'stepfather':
+    case 'mother': case 'mom': case 'mum': case 'mama':
+    case 'stepmother': case 'stepmom':
       return 'Child'
-    case 'sibling': case 'brother': case 'sister': case 'bro': case 'sis':
-    case 'stepbrother': case 'stepsister':
+    case 'father': case 'dad': case 'papa':
+    case 'stepfather': case 'stepdad':
+      return 'Child'
+    case 'parent':   // legacy — keep working for existing DB rows
+      return 'Child'
+    case 'brother': case 'bro': case 'stepbrother':
+      return 'Sibling'
+    case 'sister': case 'sis': case 'stepsister':
+      return 'Sibling'
+    case 'sibling':  // legacy — keep working for existing DB rows
       return 'Sibling'
     case 'friend': case 'best friend': case 'bestfriend': case 'bff':
       return 'Friend'
@@ -180,8 +195,11 @@ function defaultDob() { return { month: 1, day: 1, year: 1970 } }
 function defaultAnniv() { return { month: 6, day: 1, year: 2000 } }
 
 export default function FamilyScreen() {
+  const navigation = useNavigation<any>()
+
   const [members, setMembers]         = useState<any[]>([])
   const [loading, setLoading]         = useState(true)
+  const [viewingMemberMemoryCount, setViewingMemberMemoryCount] = useState<number | null>(null)
 
   // ── G1 senders — people who have added *this* user as a family member ──────
   const [senders, setSenders]         = useState<{
@@ -249,6 +267,15 @@ export default function FamilyScreen() {
   const [sendingBackIds, setSendingBackIds]       = useState<Set<string>>(new Set())
 
   useEffect(() => { loadMembers(); loadUserData(); loadSenders() }, [])
+
+  useEffect(() => {
+    if (!viewingMember) { setViewingMemberMemoryCount(null); return }
+    supabase
+      .from('scheduled_deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('family_member_id', viewingMember.id)
+      .then(({ count }) => setViewingMemberMemoryCount(count ?? 0))
+  }, [viewingMember?.id])
 
   // ── Load G1 senders who have added this user as a family member ─────────
   async function loadSenders() {
@@ -338,11 +365,14 @@ export default function FamilyScreen() {
     if (!user) { setLoading(false); return }
     const { data } = await supabase.from('family_members').select('*')
       .eq('user_id', user.id).order('created_at', { ascending: false })
-    // Exclude auto-created reciprocal rows (email IS NULL) — these are rows created
-    // by loadFamilyMembersWithPhotos so G2 can send memories to G1 via the Deliver To
-    // picker. G1 is already shown in the "Connected with" section above. Showing them
-    // again here would create confusing duplicate cards.
-    const list = (data || []).filter((m: any) => m.email !== null)
+    // Exclude auto-created reciprocal rows — these are rows created by
+    // loadFamilyMembersWithPhotos so G2 can send memories to G1 via the
+    // Deliver To picker. Auto rows have email IS NULL AND no relationship_label.
+    // Manually added contacts (via Family tab or onboarding Bridge) always have
+    // a relationship_label, so they show even when added without an email address.
+    const list = (data || []).filter(
+      (m: any) => m.email !== null || m.relationship_label
+    )
     setMembers(list)
 
     // ── Cross-populate G2 profile data into G1's member cards ────────────
@@ -628,16 +658,29 @@ export default function FamilyScreen() {
       relationship_label: form.relationship_label.trim() || null,
       is_trusted_contact: form.trusted,
       date_of_birth:      hasDob ? formatDateObj(dobDate) : null,
-      anniversary:        form.relationship === 'Spouse' && hasAnniv ? formatDateObj(annivDate) : null,
+      anniversary:        ['Husband', 'Wife', 'Partner', 'Spouse'].includes(form.relationship) && hasAnniv ? formatDateObj(annivDate) : null,
     }
 
     let targetId: string | null = null
 
     if (editingMember) {
       // ── UPDATE existing member ──────────────────────────────
+      const wasAlreadyTrusted = editingMember.is_trusted_contact === true
+      const nowTrusted        = form.trusted === true
+
+      // If trusted contact is being newly turned ON, reset consent status to pending
+      const updatePayload: any = { ...sharedFields }
+      if (!wasAlreadyTrusted && nowTrusted) {
+        updatePayload.emergency_consent_status = 'pending'
+      }
+      // If trusted contact is being turned OFF, clear consent status
+      if (wasAlreadyTrusted && !nowTrusted) {
+        updatePayload.emergency_consent_status = 'none'
+      }
+
       const { error } = await supabase
         .from('family_members')
-        .update(sharedFields)
+        .update(updatePayload)
         .eq('id', editingMember.id)
 
       if (error) {
@@ -645,6 +688,16 @@ export default function FamilyScreen() {
         setSaving(false); return
       }
       targetId = editingMember.id
+
+      // Fire consent email if trusted contact was just newly enabled
+      if (!wasAlreadyTrusted && nowTrusted && editingMember.email) {
+        supabase.functions.invoke('send-emergency-contact-email', {
+          body: { family_member_id: targetId, is_new_member: false },
+        }).then(({ error: fnErr }) => {
+          if (fnErr) console.warn('Emergency consent email failed:', fnErr.message)
+          else console.log('Emergency consent email sent to', editingMember.email)
+        })
+      }
 
     } else {
       // ── INSERT new member ───────────────────────────────────
@@ -666,6 +719,16 @@ export default function FamilyScreen() {
         }).then(({ error: fnErr }) => {
           if (fnErr) console.warn('Invite email failed:', fnErr.message)
           else console.log('Invite email sent to', form.email.trim().toLowerCase())
+        })
+      }
+
+      // If new member is immediately marked as trusted contact, fire consent email too
+      if (targetId && form.trusted && form.email.trim()) {
+        supabase.functions.invoke('send-emergency-contact-email', {
+          body: { family_member_id: targetId, is_new_member: true },
+        }).then(({ error: fnErr }) => {
+          if (fnErr) console.warn('Emergency consent email failed:', fnErr.message)
+          else console.log('Emergency consent email sent to', form.email.trim().toLowerCase())
         })
       }
     }
@@ -856,6 +919,18 @@ export default function FamilyScreen() {
     })
   }
 
+  // ── Resend emergency consent request ─────────────────────────────────────
+  async function handleResendEmergencyRequest(member: any) {
+    setResendingId(member.id)
+    supabase.functions.invoke('send-emergency-contact-email', {
+      body: { family_member_id: member.id, is_new_member: false },
+    }).then(({ error: fnErr }) => {
+      if (fnErr) console.warn('Resend emergency request failed:', fnErr.message)
+      else console.log('Emergency consent request resent to', member.email)
+      setResendingId(null)
+    })
+  }
+
   async function handleDeleteMember() {
     if (!confirmDelete) return
     setDeleting(true)
@@ -875,9 +950,13 @@ export default function FamilyScreen() {
     if (!user) return
 
     if (member.is_emergency_contact) {
-      // Remove designation
+      // Remove designation — clear all emergency + consent fields
       await supabase.from('family_members')
-        .update({ is_emergency_contact: false, emergency_priority: null })
+        .update({
+          is_emergency_contact:     false,
+          emergency_priority:       null,
+          emergency_consent_status: 'none',
+        })
         .eq('id', member.id)
       // Re-pack priorities so there are no gaps (e.g. 1, 3 → 1, 2)
       const remaining = members
@@ -889,8 +968,11 @@ export default function FamilyScreen() {
           .eq('id', m.id)
       ))
     } else {
-      // Add designation — find next free priority slot
-      const current = members.filter(m => m.is_emergency_contact)
+      // Add designation — count only accepted+pending slots (reserve the slot)
+      const current = members.filter(m =>
+        m.is_emergency_contact &&
+        (m.emergency_consent_status === 'accepted' || m.emergency_consent_status === 'pending')
+      )
       if (current.length >= 3) return // already at max
       if (!member.phone) {
         alert('Please add a phone number to this contact before designating them as an emergency contact.')
@@ -899,22 +981,18 @@ export default function FamilyScreen() {
       const usedPriorities = current.map(m => m.emergency_priority)
       const nextPriority = [1, 2, 3].find(p => !usedPriorities.includes(p)) ?? 1
       await supabase.from('family_members')
-        .update({ is_emergency_contact: true, emergency_priority: nextPriority })
+        .update({
+          is_emergency_contact:     true,
+          emergency_priority:       nextPriority,
+          emergency_consent_status: 'pending',
+        })
         .eq('id', member.id)
 
-      // Notify the designated person by email (fire-and-forget — don't block UI)
+      // Send consent request email (fire-and-forget — don't block UI)
       if (member.email) {
-        fetch(`${SUPABASE_URL}/functions/v1/send-emergency-contact-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            family_member_id: member.id,
-            is_new_member: false,
-          }),
-        }).catch(e => console.warn('Emergency email send failed:', e))
+        supabase.functions.invoke('send-emergency-contact-email', {
+          body: { family_member_id: member.id, is_new_member: false },
+        }).catch(e => console.warn('Emergency consent email send failed:', e))
       }
     }
 
@@ -926,11 +1004,14 @@ export default function FamilyScreen() {
   const statusColor = (status: string) =>
     status === 'accepted' ? C.success : status === 'declined' ? C.error : C.amber
 
-  const trustedMembers = members.filter(m => m.is_trusted_contact)
+  const founderMember  = members.find(m => m.is_founder_contact) ?? null
+  const trustedMembers = members.filter(m => m.is_trusted_contact && !m.is_founder_contact)
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  const regularMembers = members.filter(m => !m.is_trusted_contact)
+  const regularMembers = members.filter(m => !m.is_trusted_contact && !m.is_founder_contact)
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  const emergencyCount = members.filter(m => m.is_emergency_contact).length
+  // Only count accepted emergency contacts as "active" for display / limit purposes
+  const emergencyCount        = members.filter(m => m.is_emergency_contact && m.emergency_consent_status === 'accepted').length
+  const emergencyPendingCount = members.filter(m => m.is_emergency_contact && m.emergency_consent_status === 'pending').length
 
   // ── Helpers for the date display fields ───────────────────────────────────
   function DateField({
@@ -942,19 +1023,21 @@ export default function FamilyScreen() {
   }) {
     return (
       <>
-        <Text style={s.fieldLabel}>{label}</Text>
+        <Text style={[s.fieldLabel, { color: '#7A3448' }]}>{label}</Text>
         <TouchableOpacity
           onPress={onOpen}
           style={[s.input, {
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
             paddingVertical: 14,
+            backgroundColor: WM.inputBg,
+            borderColor: WM.border,
           }]}>
-          <Text style={{ color: hasValue ? C.offWhite : C.greyDim, fontSize: 15 }}>
+          <Text style={{ color: hasValue ? WM.title : WM.sub, fontSize: 15 }}>
             {hasValue ? value : `Tap to set ${label.replace(' (optional)', '').toLowerCase()}`}
           </Text>
           {hasValue && (
             <TouchableOpacity onPress={onClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ color: C.greyDim, fontSize: 16 }}>✕</Text>
+              <Text style={{ color: WM.sub, fontSize: 16 }}>✕</Text>
             </TouchableOpacity>
           )}
         </TouchableOpacity>
@@ -969,7 +1052,7 @@ export default function FamilyScreen() {
 
         <View style={s.pageHeaderPlain}>
           <Text style={s.pageTitle}>Family</Text>
-          <Text style={s.pageSubtitle}>Who receives your legacy</Text>
+          <Text style={s.pageSubtitle}>The people who matter most</Text>
         </View>
 
         <TouchableOpacity activeOpacity={0.85} style={s.addBtn} onPress={() => setShowModal(true)}>
@@ -999,19 +1082,19 @@ export default function FamilyScreen() {
 
         {loading ? (
           <ActivityIndicator color={C.amber} style={{ marginTop: 20 }} />
-        ) : members.length === 0 && senders.length === 0 ? (
+        ) : !founderMember && members.length === 0 && senders.length === 0 ? (
+          // Truly empty — no Sokha, no members, no senders
           <View>
             <View style={s.tipCard}>
               <Text style={s.tipTitle}>👨‍👩‍👧 How Family Access Works</Text>
               <Text style={s.tipBody}>
-                Invite family members by email. When the time comes, your trusted contact activates
-                the Vault Release — giving your family access to everything you've preserved.
+                Invite family members by email. If your family ever needs it, your trusted contact can unlock access to everything you've preserved.
               </Text>
             </View>
             <View style={s.emptyState}>
               <Text style={s.emptyIcon}>💌</Text>
               <Text style={s.emptyTitle}>No family members yet</Text>
-              <Text style={s.emptyDesc}>Invite your loved ones so they're ready when the time comes.</Text>
+              <Text style={s.emptyDesc}>Invite your loved ones so they're always connected.</Text>
             </View>
           </View>
         ) : (
@@ -1069,11 +1152,76 @@ export default function FamilyScreen() {
               </View>
             ) : null}
 
+            {/* ── Founder card — Sokha Eang ─────────────────────────────────── */}
+            {founderMember ? (
+              <View style={{ marginHorizontal: 20, marginBottom: 20 }}>
+                <View style={{ marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: C.grey, fontSize: 11, fontWeight: '700',
+                    letterSpacing: 1.2, textTransform: 'uppercase' }}>From the Founder</Text>
+                </View>
+                {/* Gradient border card */}
+                <LinearGradient
+                  colors={['#F06292', '#F48A5A', '#FFD07A']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{ borderRadius: 20, padding: 1.5 }}>
+                  <View style={{ borderRadius: 19, backgroundColor: '#1A0A22',
+                    flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' }}>
+                    {/* Avatar */}
+                    <View style={{ width: 110, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: 'rgba(240,98,146,0.12)', borderRightWidth: 1,
+                      borderRightColor: 'rgba(240,98,146,0.15)', paddingVertical: 22 }}>
+                      <View style={{ width: 72, height: 72, borderRadius: 36,
+                        backgroundColor: 'rgba(240,98,146,0.2)', borderWidth: 2,
+                        borderColor: '#F06292AA',
+                        alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 32, fontWeight: '800', color: '#F06292' }}>S</Text>
+                      </View>
+                      {/* Founder badge */}
+                      <View style={{ marginTop: 8, backgroundColor: 'rgba(240,98,146,0.18)',
+                        borderRadius: 20, borderWidth: 1, borderColor: 'rgba(240,98,146,0.4)',
+                        paddingHorizontal: 8, paddingVertical: 3 }}>
+                        <Text style={{ color: '#F06292', fontSize: 10, fontWeight: '800',
+                          letterSpacing: 0.5 }}>FOUNDER</Text>
+                      </View>
+                    </View>
+                    {/* Content */}
+                    <View style={{ flex: 1, padding: 16, justifyContent: 'center', gap: 6 }}>
+                      <Text style={{ color: '#FFEEF8', fontSize: 18, fontWeight: '700' }}>
+                        Sokha Eang
+                      </Text>
+                      <Text style={{ color: 'rgba(240,98,146,0.8)', fontSize: 12,
+                        fontStyle: 'italic', lineHeight: 18 }}>
+                        "I built this for my own family first — happy you're here."
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setConfirmDelete(founderMember)}
+                        activeOpacity={0.7}
+                        style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 11 }}>
+                          Remove
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </View>
+            ) : null}
+
+            {/* ── Nudge when Sokha is the only entry ── */}
+            {founderMember && trustedMembers.length === 0 && regularMembers.length === 0 && senders.length === 0 ? (
+              <View style={[s.tipCard, { marginTop: 0 }]}>
+                <Text style={s.tipTitle}>👨‍👩‍👧 Add Your First Family Member</Text>
+                <Text style={s.tipBody}>
+                  Invite family members by email so they can receive your moments and stay connected.
+                </Text>
+              </View>
+            ) : null}
+
             {/* ── Own members (Trusted Contacts + Family) — only when user has added people ── */}
             {members.length > 0 ? (<>
 
             {/* ── Trusted Contact Banner ── */}
-            {emergencyCount === 0 ? (
+            {emergencyCount === 0 && emergencyPendingCount === 0 ? (
               <View style={{ marginHorizontal: 20, marginBottom: 16, padding: 14, borderRadius: 14,
                 backgroundColor: '#E8453C18', borderWidth: 1, borderColor: '#E8453C44',
                 flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -1083,22 +1231,33 @@ export default function FamilyScreen() {
                     No Trusted Contact Set
                   </Text>
                   <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
-                    Tap ✏️ on a family member and enable Trusted Contact so Solace can notify them if you stop checking in.
+                    Tap ✏️ on a family member and enable Trusted Contact so Solace can notify them if you miss your check-ins.
                   </Text>
                 </View>
               </View>
             ) : (
               <>
                 <View style={{ marginHorizontal: 20, marginBottom: 12, padding: 14, borderRadius: 14,
-                  backgroundColor: '#3dba6218', borderWidth: 1, borderColor: '#3dba6244',
+                  backgroundColor: emergencyCount > 0 ? '#3dba6218' : 'rgba(255,184,0,0.08)',
+                  borderWidth: 1,
+                  borderColor: emergencyCount > 0 ? '#3dba6244' : 'rgba(255,184,0,0.30)',
                   flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Text style={{ fontSize: 24 }}>✅</Text>
+                  <Text style={{ fontSize: 24 }}>{emergencyCount > 0 ? '✅' : '⏳'}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: C.success, fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
-                      {emergencyCount} Trusted Contact{emergencyCount > 1 ? 's' : ''} Set
-                    </Text>
+                    {emergencyCount > 0 ? (
+                      <Text style={{ color: C.success, fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
+                        {emergencyCount} Trusted Contact{emergencyCount > 1 ? 's' : ''} Confirmed
+                      </Text>
+                    ) : null}
+                    {emergencyPendingCount > 0 ? (
+                      <Text style={{ color: '#A32D2D', fontSize: 13, fontWeight: '600', marginBottom: 2 }}>
+                        🚑 {emergencyPendingCount} emergency consent pending
+                      </Text>
+                    ) : null}
                     <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
-                      They will be notified if you miss check-ins, and will receive your vault.
+                      {emergencyCount > 0
+                        ? 'They will be notified if you miss check-ins, and will have access to your vault.'
+                        : 'Consent request sent — waiting for their reply.'}
                     </Text>
                   </View>
                 </View>
@@ -1228,11 +1387,30 @@ export default function FamilyScreen() {
                               </Text>
                             </View>
                           ) : null}
-                          {tm.is_emergency_contact ? (
+                          {tm.is_emergency_contact && tm.emergency_consent_status === 'accepted' ? (
                             <View style={{ alignSelf: 'flex-start', backgroundColor: '#0A84FF14', borderRadius: 8,
                               borderWidth: 1, borderColor: '#0A84FF44', paddingHorizontal: 8, paddingVertical: 4 }}>
                               <Text style={{ color: '#0A84FF', fontSize: 13, fontWeight: '700' }}>
                                 📱 Emergency #{tm.emergency_priority}
+                              </Text>
+                            </View>
+                          ) : tm.is_emergency_contact && tm.emergency_consent_status === 'pending' ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(226,75,74,0.08)',
+                              borderLeftWidth: 3, borderLeftColor: '#E24B4A',
+                              borderTopWidth: 0.5, borderTopColor: 'rgba(226,75,74,0.25)',
+                              borderRightWidth: 0.5, borderRightColor: 'rgba(226,75,74,0.25)',
+                              borderBottomWidth: 0.5, borderBottomColor: 'rgba(226,75,74,0.25)',
+                              borderTopRightRadius: 8, borderBottomRightRadius: 8,
+                              paddingHorizontal: 10, paddingVertical: 5,
+                              flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 14 }}>🚑</Text>
+                              <Text style={{ color: '#7A1F1F', fontSize: 13, fontWeight: '600' }}>Emergency consent pending</Text>
+                            </View>
+                          ) : tm.emergency_consent_status === 'declined' ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,100,80,0.10)', borderRadius: 8,
+                              borderWidth: 1, borderColor: 'rgba(255,100,80,0.30)', paddingHorizontal: 8, paddingVertical: 4 }}>
+                              <Text style={{ color: '#FF6450', fontSize: 13, fontWeight: '700' }}>
+                                ✗ Declined emergency role
                               </Text>
                             </View>
                           ) : null}
@@ -1283,11 +1461,30 @@ export default function FamilyScreen() {
                               </Text>
                             </View>
                           ) : null}
-                          {m.is_emergency_contact ? (
+                          {m.is_emergency_contact && m.emergency_consent_status === 'accepted' ? (
                             <View style={{ alignSelf: 'flex-start', backgroundColor: '#0A84FF14', borderRadius: 8,
                               borderWidth: 1, borderColor: '#0A84FF44', paddingHorizontal: 8, paddingVertical: 4 }}>
                               <Text style={{ color: '#0A84FF', fontSize: 13, fontWeight: '700' }}>
                                 📱 Emergency #{m.emergency_priority}
+                              </Text>
+                            </View>
+                          ) : m.is_emergency_contact && m.emergency_consent_status === 'pending' ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(226,75,74,0.08)',
+                              borderLeftWidth: 3, borderLeftColor: '#E24B4A',
+                              borderTopWidth: 0.5, borderTopColor: 'rgba(226,75,74,0.25)',
+                              borderRightWidth: 0.5, borderRightColor: 'rgba(226,75,74,0.25)',
+                              borderBottomWidth: 0.5, borderBottomColor: 'rgba(226,75,74,0.25)',
+                              borderTopRightRadius: 8, borderBottomRightRadius: 8,
+                              paddingHorizontal: 10, paddingVertical: 5,
+                              flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 14 }}>🚑</Text>
+                              <Text style={{ color: '#7A1F1F', fontSize: 13, fontWeight: '600' }}>Emergency consent pending</Text>
+                            </View>
+                          ) : m.emergency_consent_status === 'declined' ? (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(150,150,150,0.10)', borderRadius: 8,
+                              borderWidth: 1, borderColor: 'rgba(150,150,150,0.25)', paddingHorizontal: 8, paddingVertical: 4 }}>
+                              <Text style={{ color: C.grey, fontSize: 13, fontWeight: '500' }}>
+                                Not available as emergency contact
                               </Text>
                             </View>
                           ) : null}
@@ -1310,9 +1507,10 @@ export default function FamilyScreen() {
       {/* ── Member Detail — read-only view modal ───────────────────────────── */}
       <Modal visible={!!viewingMember} transparent animationType="slide"
         onRequestClose={() => setViewingMember(null)}>
-        <View style={s.modalOverlay}>
-          <View style={s.modalSheet}>
-            <LinearGradient colors={WARM} style={[s.modalInner, { maxHeight: '90%' }]}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setViewingMember(null)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={{ minHeight: '80%', maxHeight: '90%', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', width: '100%' }}>
+            <LinearGradient colors={WARM} style={{ flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 28 }}>
               <View style={s.modalHandle} />
               {/* Header */}
               <View style={s.modalHeader}>
@@ -1335,7 +1533,7 @@ export default function FamilyScreen() {
                 </View>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
                 {viewingMember ? (() => {
                   const vm = viewingMember
                   const photoUrl = memberPhotoUrls[vm.id] || null
@@ -1411,7 +1609,7 @@ export default function FamilyScreen() {
 
                       {/* Badges */}
                       <View style={{ gap: 10, marginBottom: 8 }}>
-                        {vm.is_trusted_contact ? (
+                        {vm.is_trusted_contact && vm.emergency_consent_status === 'accepted' ? (
                           <View style={{ backgroundColor: WM.cardBg, borderRadius: 12, borderWidth: 1,
                             borderColor: WM.border, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <Text style={{ fontSize: 22 }}>🔒</Text>
@@ -1420,8 +1618,33 @@ export default function FamilyScreen() {
                               <Text style={{ fontSize: 13, color: WM.sub }}>Can unlock your vault</Text>
                             </View>
                           </View>
+                        ) : vm.is_trusted_contact && vm.emergency_consent_status === 'pending' ? (
+                          <View style={{ backgroundColor: 'rgba(226,75,74,0.08)',
+                            borderLeftWidth: 3, borderLeftColor: '#E24B4A',
+                            borderTopWidth: 0.5, borderTopColor: 'rgba(226,75,74,0.25)',
+                            borderRightWidth: 0.5, borderRightColor: 'rgba(226,75,74,0.25)',
+                            borderBottomWidth: 0.5, borderBottomColor: 'rgba(226,75,74,0.25)',
+                            borderTopRightRadius: 12, borderBottomRightRadius: 12,
+                            padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 22 }}>🚑</Text>
+                            <View>
+                              <Text style={{ fontSize: 15, fontWeight: '600', color: '#501313' }}>Emergency contact · request sent</Text>
+                              <Text style={{ fontSize: 13, color: '#A32D2D' }}>Waiting for their reply</Text>
+                            </View>
+                          </View>
+                        ) : vm.emergency_consent_status === 'declined' ? (
+                          <View style={{ backgroundColor: 'rgba(150,150,150,0.08)', borderRadius: 12, borderWidth: 1,
+                            borderColor: 'rgba(150,150,150,0.25)', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 22 }}>🔕</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 15, fontWeight: '600', color: C.grey }}>Not available as emergency contact</Text>
+                              <TouchableOpacity onPress={() => { setViewingMember(null); handleResendEmergencyRequest(vm) }}>
+                                <Text style={{ fontSize: 13, color: C.accent, fontWeight: '600', marginTop: 2 }}>Resend the request →</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
                         ) : null}
-                        {vm.is_emergency_contact ? (
+                        {vm.is_emergency_contact && vm.emergency_consent_status === 'accepted' ? (
                           <View style={{ backgroundColor: '#0A84FF14', borderRadius: 12, borderWidth: 1,
                             borderColor: '#0A84FF44', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <Text style={{ fontSize: 22 }}>📱</Text>
@@ -1453,6 +1676,28 @@ export default function FamilyScreen() {
                             </View>
                           </View>
                         ) : null}
+
+                        {/* ── Moments bridge card ── */}
+                        <TouchableOpacity
+                          onPress={() => { setViewingMember(null); navigation.navigate('Memories', { openMemberId: vm.id }) }}
+                          activeOpacity={0.8}
+                          style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                          <Text style={{ fontSize: 26 }}>💌</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: WM.title }}>
+                              Moments recorded for {vm.name?.split(' ')[0]}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: WM.sub, marginTop: 3 }}>
+                              {viewingMemberMemoryCount === null
+                                ? 'Tap to open in Moments tab'
+                                : viewingMemberMemoryCount === 0
+                                  ? 'No moments yet · tap to start recording'
+                                  : `${viewingMemberMemoryCount} ${viewingMemberMemoryCount === 1 ? 'moment' : 'moments'} recorded · tap to open in Moments tab`}
+                            </Text>
+                          </View>
+                          <Text style={{ color: WM.sub, fontSize: 22, fontWeight: '300' }}>›</Text>
+                        </TouchableOpacity>
+
                       </View>
                     </>
                   )
@@ -1460,17 +1705,19 @@ export default function FamilyScreen() {
               </ScrollView>
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Add / Edit Family Member Modal ──────────────────────────────────── */}
       <Modal visible={showModal} transparent animationType="slide"
         onRequestClose={() => { setShowModal(false); resetForm() }}
         >
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => { setShowModal(false); resetForm() }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? undefined : 'height'} style={{ width: '100%' }}>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={s.modalSheet}>
-              <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '94%' }]}>
+              <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '94%', paddingBottom: 0, flexShrink: 1 }]}>
                 <View style={s.modalHandle} />
                 <View style={s.modalHeader}>
                   <Text style={[s.modalTitle, { color: '#3D1020' }]}>{editingMember ? 'Edit Member' : 'Add Family Member'}</Text>
@@ -1478,7 +1725,7 @@ export default function FamilyScreen() {
                     <View style={s.modalCloseBtn}><Text style={s.modalCloseX}>✕</Text></View>
                   </TouchableOpacity>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={true} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
+                <ScrollView showsVerticalScrollIndicator={true} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }}>
 
                   {/* ── Import from Contacts ──────────────────────────────── */}
                   <TouchableOpacity
@@ -1588,7 +1835,7 @@ export default function FamilyScreen() {
                   {/* ── Personal label ───────────────────────────────────── */}
                   <Text style={[s.fieldLabel, { color: '#7A3448' }]}>What do you call them? (optional)</Text>
                   <TextInput
-                    style={[s.modalInput, { marginBottom: 20 }]}
+                    style={[s.modalInput, { marginBottom: 20, borderWidth: 2, borderColor: '#F06292' }]}
                     placeholder={`e.g. Dad, Grandma Rose, Little Sis`}
                     placeholderTextColor="rgba(61,16,32,0.35)"
                     value={form.relationship_label}
@@ -1613,7 +1860,7 @@ export default function FamilyScreen() {
                   </DateField>
 
                   {/* ── Anniversary (spouse only) ─────────────────────────── */}
-                  {form.relationship === 'Spouse' && (
+                  {['Husband', 'Wife', 'Partner', 'Spouse'].includes(form.relationship) && (
                     <DateField
                       label="Anniversary (optional)"
                       hasValue={hasAnniv}
@@ -1639,7 +1886,7 @@ export default function FamilyScreen() {
                     onPress={() => setForm(f => ({ ...f, trusted: !f.trusted }))}>
                     <View style={s.listInfo}>
                       <Text style={[s.listLabel, { color: '#3D1020' }]}>⭐ Trusted Contact</Text>
-                      <Text style={[s.listDesc, { color: '#7A3448' }]}>This person can activate the Vault Release</Text>
+                      <Text style={[s.listDesc, { color: '#7A3448' }]}>This person can unlock your family's access</Text>
                     </View>
                     <View style={[s.checkBox,
                       { borderColor: 'rgba(61,16,32,0.3)' },
@@ -1690,7 +1937,15 @@ export default function FamilyScreen() {
                     </TouchableOpacity>
                   )}
 
-                  {saveMsg ? <Text style={{ color: '#C0392B', fontSize: 14, marginBottom: 12 }}>{saveMsg}</Text> : null}
+                </ScrollView>
+
+                {/* ── Sticky footer — always visible, never scrolls away ── */}
+                <View style={{
+                  paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+                  borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.4)',
+                  backgroundColor: 'transparent',
+                }}>
+                  {saveMsg ? <Text style={{ color: '#C0392B', fontSize: 14, marginBottom: 10 }}>{saveMsg}</Text> : null}
 
                   <TouchableOpacity onPress={handleInvite}
                     disabled={saving || uploadingPhoto} activeOpacity={0.85} style={{ marginBottom: 8 }}>
@@ -1712,8 +1967,7 @@ export default function FamilyScreen() {
                         setDeleteConfirmText('')
                         setConfirmDelete(editingMember)
                       }}
-                      activeOpacity={0.85}
-                      style={{ marginTop: 4, marginBottom: 8 }}>
+                      activeOpacity={0.85}>
                       <View style={[s.btnPrimary, {
                         backgroundColor: 'rgba(180,30,30,0.12)',
                         borderWidth: 1, borderColor: 'rgba(180,30,30,0.3)',
@@ -1724,45 +1978,67 @@ export default function FamilyScreen() {
                       </View>
                     </TouchableOpacity>
                   ) : null}
+                </View>
 
-                </ScrollView>
               </LinearGradient>
             </View>
+            </TouchableOpacity>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Delete Confirmation ─────────────────────────────────────────────── */}
       <Modal visible={!!confirmDelete} transparent animationType="fade"
         onRequestClose={() => { setConfirmDelete(null); setDeleteConfirmText('') }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={s.confirmOverlay}>
+        <TouchableOpacity style={s.confirmOverlay} activeOpacity={1} onPress={() => { setConfirmDelete(null); setDeleteConfirmText('') }}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={s.confirmBox}>
             <LinearGradient colors={WARM} style={[s.confirmInner, { paddingBottom: 28 }]}>
 
-              {/* Icon + title */}
-              <Text style={[s.confirmIcon, { fontSize: 36 }]}>⚠️</Text>
-              <Text style={[s.confirmTitle, { color: WM.title }]}>Remove Family Member?</Text>
+              {/* Icon + title — different for Sokha */}
+              <Text style={[s.confirmIcon, { fontSize: 36 }]}>
+                {confirmDelete?.is_founder_contact ? '👋' : '⚠️'}
+              </Text>
+              <Text style={[s.confirmTitle, { color: WM.title }]}>
+                {confirmDelete?.is_founder_contact ? 'Remove Sokha?' : 'Remove Family Member?'}
+              </Text>
 
-              {/* What will be lost */}
-              <View style={{
-                backgroundColor: 'rgba(240,98,146,0.10)', borderRadius: 14,
-                borderWidth: 1.5, borderColor: 'rgba(240,98,146,0.35)',
-                padding: 14, marginBottom: 20, width: '100%',
-              }}>
-                <Text style={{ color: WM.title, fontSize: 14, fontWeight: '700', marginBottom: 6 }}>
-                  This will permanently remove:
-                </Text>
-                <Text style={{ color: WM.sub, fontSize: 13, lineHeight: 20 }}>
-                  {'• '}
-                  <Text style={{ fontWeight: '700', color: WM.title }}>{confirmDelete?.name}</Text>
-                  {' from your family list\n'}
-                  {'• Their consent and invitation history\n'}
-                  {'• All scheduled deliveries to them\n'}
-                  {'• Any future messages planned for them'}
-                </Text>
-              </View>
+              {/* Founder explanation OR standard warning */}
+              {confirmDelete?.is_founder_contact ? (
+                <View style={{
+                  backgroundColor: 'rgba(240,98,146,0.08)', borderRadius: 14,
+                  borderWidth: 1.5, borderColor: 'rgba(240,98,146,0.25)',
+                  padding: 14, marginBottom: 20, width: '100%',
+                }}>
+                  <Text style={{ color: WM.title, fontSize: 14, fontWeight: '700', marginBottom: 6 }}>
+                    About this contact
+                  </Text>
+                  <Text style={{ color: WM.sub, fontSize: 13, lineHeight: 20 }}>
+                    Sokha is the founder of Solace Life. He added himself so you'd never feel alone getting started — and so you always had someone to reach out to.{'\n\n'}
+                    You can remove him anytime. It won't affect your account.
+                  </Text>
+                </View>
+              ) : (
+                <View style={{
+                  backgroundColor: 'rgba(240,98,146,0.10)', borderRadius: 14,
+                  borderWidth: 1.5, borderColor: 'rgba(240,98,146,0.35)',
+                  padding: 14, marginBottom: 20, width: '100%',
+                }}>
+                  <Text style={{ color: WM.title, fontSize: 14, fontWeight: '700', marginBottom: 6 }}>
+                    This will permanently remove:
+                  </Text>
+                  <Text style={{ color: WM.sub, fontSize: 13, lineHeight: 20 }}>
+                    {'• '}
+                    <Text style={{ fontWeight: '700', color: WM.title }}>{confirmDelete?.name}</Text>
+                    {' from your family list\n'}
+                    {'• Their consent and invitation history\n'}
+                    {'• All scheduled deliveries to them\n'}
+                    {'• Any future messages planned for them'}
+                  </Text>
+                </View>
+              )}
 
               {/* Name-verify prompt */}
               <Text style={{ color: WM.sub, fontSize: 13, marginBottom: 8, textAlign: 'center', lineHeight: 19 }}>
@@ -1801,7 +2077,9 @@ export default function FamilyScreen() {
                 <TouchableOpacity
                   style={[s.confirmCancel, { borderColor: WM.border, backgroundColor: WM.cardBg, flex: 1 }]}
                   onPress={() => { setConfirmDelete(null); setDeleteConfirmText('') }}>
-                  <Text style={[s.confirmCancelText, { color: WM.title }]}>Keep Them</Text>
+                  <Text style={[s.confirmCancelText, { color: WM.title }]}>
+                    {confirmDelete?.is_founder_contact ? 'Keep Sokha' : 'Keep Them'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.confirmDelete, {
@@ -1821,7 +2099,9 @@ export default function FamilyScreen() {
 
             </LinearGradient>
           </View>
-        </KeyboardAvoidingView>
+          </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
       </Modal>
       {/* ── Medical ID Setup Guide (iOS only) ────────────────────────────────── */}
       {Platform.OS === 'ios' && (
@@ -1830,7 +2110,8 @@ export default function FamilyScreen() {
           transparent
           animationType="slide"
           onRequestClose={() => setShowMedicalIdGuide(false)}>
-          <View style={s.modalOverlay}>
+          <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowMedicalIdGuide(false)}>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={[s.modalSheet, { maxHeight: '92%' }]}>
               <LinearGradient colors={['#003087', '#0A84FF', '#40A9FF']} style={s.modalInner}>
 
@@ -1850,7 +2131,7 @@ export default function FamilyScreen() {
                       Two layers of protection
                     </Text>
                     <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 20 }}>
-                      Your trusted contacts are already set up in Solace Life — they'll be notified if you miss check-ins and will receive your vault.{'\n\n'}
+                      Your trusted contacts are already set up in Solace Life — they'll be notified if you miss check-ins and will have access to your vault.{'\n\n'}
                       This optional step adds them to iPhone Medical ID so first responders can also call them directly from your locked screen — no passcode needed. Apple's security prevents apps from doing this automatically, so it must be set up manually.
                     </Text>
                   </View>
@@ -1948,7 +2229,8 @@ export default function FamilyScreen() {
                 </ScrollView>
               </LinearGradient>
             </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       )}
 
@@ -1958,7 +2240,8 @@ export default function FamilyScreen() {
         transparent
         animationType="slide"
         onRequestClose={dismissSuggestions}>
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={dismissSuggestions}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={[s.modalSheet, { maxHeight: '92%' }]}>
             <LinearGradient colors={['#F06292', '#F48A5A', '#FFD07A']} style={[s.modalInner, { maxHeight: '92%' }]}>
 
@@ -2075,7 +2358,8 @@ export default function FamilyScreen() {
 
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── G1 Sender Detail Bottom Sheet ──────────────────────────────────── */}
@@ -2085,8 +2369,9 @@ export default function FamilyScreen() {
         animationType="slide"
         onRequestClose={() => setSelectedSender(null)}
       >
-        <View style={s.modalOverlay}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setSelectedSender(null)}>
           {/* Sheet: no flex — sizes to content, capped by maxHeight so ScrollView kicks in */}
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={[s.modalSheet, { maxHeight: '90%', overflow: 'hidden' }]}>
             <LinearGradient
               colors={WARM}
@@ -2207,7 +2492,8 @@ export default function FamilyScreen() {
 
             </LinearGradient>
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
     </ScreenWrap>

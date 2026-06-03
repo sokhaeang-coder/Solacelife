@@ -52,11 +52,15 @@
     }
 
     .logo {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.15rem;
-      color: #F6F3EC;
+      display: inline-flex;
+      align-items: center;
       text-decoration: none;
-      letter-spacing: 0.02em;
+    }
+
+    .logo img {
+      height: 48px;
+      width: auto;
+      filter: drop-shadow(0 1px 8px rgba(0,0,0,0.35));
     }
 
     .nav-right {
@@ -1239,12 +1243,14 @@
     }
 
     .footer-logo {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.25rem;
-      color: var(--cream);
-      text-decoration: none;
       display: inline-block;
       margin-bottom: 14px;
+    }
+
+    .footer-logo img {
+      height: 80px;
+      width: auto;
+      opacity: 0.90;
     }
 
     .footer-tagline {
@@ -1291,7 +1297,9 @@
 
   <!-- ── NAV ─────────────────────────────────────────────────── -->
   <nav>
-    <a href="index.html" class="logo">Solace Life</a>
+    <a href="index.html" class="logo">
+      <img src="logos/logo-nav.png" alt="Solace Life" />
+    </a>
     <div class="nav-right">
       <a href="index.html" class="nav-link">For Families</a>
       <a href="#apply" class="nav-cta">Join the Network →</a>
@@ -1997,7 +2005,9 @@
 
   <!-- ── FOOTER ─────────────────────────────────────────────────── -->
   <footer>
-    <a href="index.html" class="footer-logo">Solace Life</a>
+    <a href="index.html" class="footer-logo">
+      <img src="logos/logo-stacked.png" alt="Solace Life" />
+    </a>
     <p class="footer-tagline">Leave something they'll carry forever.</p>
     <div class="footer-links">
       <a href="index.html">For Families</a>
