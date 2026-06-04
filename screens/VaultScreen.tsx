@@ -250,6 +250,13 @@ export default function VaultScreen() {
   const [prescriptionImageUri, setPrescriptionImageUri] = useState<string | null>(null)
   const [legalScanUri, setLegalScanUri]                 = useState<string | null>(null)
   const [financialScanUri, setFinancialScanUri]         = useState<string | null>(null)
+  // ── "Who can see what" per-category access control ──
+  const [showAccessModal, setShowAccessModal] = useState(false)
+  const [accessLoading, setAccessLoading]     = useState(false)
+  const [accessMembers, setAccessMembers]     = useState<any[]>([])
+  const [accessRules, setAccessRules]         = useState<Record<string, string[]>>({})
+  const [savingAccess, setSavingAccess]       = useState(false)
+  const [accessMsg, setAccessMsg]             = useState('')
 
   useEffect(() => { loadAll() }, [])
 
@@ -274,6 +281,81 @@ export default function VaultScreen() {
     setCounts(tally)
     setRecentItems(await decryptVaultItems(recentRes.data || []))
     setLoading(false)
+  }
+
+  async function openAccessModal() {
+    setShowAccessModal(true)
+    setAccessLoading(true)
+    setAccessMsg('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setAccessLoading(false); return }
+    const [memRes, ruleRes, sealRes] = await Promise.all([
+      supabase.from('family_members')
+        .select('id, name, relationship, is_trusted_contact, status')
+        .eq('user_id', user.id)
+        .order('created_at'),
+      supabase.from('vault_category_access')
+        .select('category, family_member_id')
+        .eq('user_id', user.id),
+      supabase.from('vault_category_sealed')
+        .select('category')
+        .eq('user_id', user.id),
+    ])
+    const allMembers = memRes.data || []
+    setAccessMembers(allMembers)
+    const sealed = (sealRes.data || []).map((r: any) => r.category)
+    const map: Record<string, string[]> = {}
+    ;(ruleRes.data || []).forEach((r: any) => {
+      map[r.category] = [...(map[r.category] || []), r.family_member_id]
+    })
+    // Never-configured categories start with all trusted contacts visibly
+    // pre-selected — no hidden defaults. Sealed categories start empty.
+    const trustedIds = allMembers.filter((m: any) => m.is_trusted_contact).map((m: any) => m.id)
+    VAULT_CATEGORIES.forEach(cat => {
+      if (!map[cat.key]) map[cat.key] = sealed.includes(cat.key) ? [] : [...trustedIds]
+    })
+    setAccessRules(map)
+    setAccessLoading(false)
+  }
+
+  function toggleAccess(category: string, memberId: string) {
+    setAccessRules(prev => {
+      const cur = prev[category] || []
+      return {
+        ...prev,
+        [category]: cur.includes(memberId)
+          ? cur.filter(id => id !== memberId)
+          : [...cur, memberId],
+      }
+    })
+  }
+
+  async function saveAccessRules() {
+    setSavingAccess(true)
+    setAccessMsg('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSavingAccess(false); return }
+    await Promise.all([
+      supabase.from('vault_category_access').delete().eq('user_id', user.id),
+      supabase.from('vault_category_sealed').delete().eq('user_id', user.id),
+    ])
+    const rows = Object.entries(accessRules).flatMap(([category, ids]) =>
+      ids.map(family_member_id => ({ user_id: user.id, category, family_member_id })))
+    // Zero people selected = a deliberate seal — no one receives that section
+    const sealedRows = VAULT_CATEGORIES
+      .filter(cat => (accessRules[cat.key] || []).length === 0)
+      .map(cat => ({ user_id: user.id, category: cat.key }))
+    const [rulesRes, sealRes] = await Promise.all([
+      rows.length       ? supabase.from('vault_category_access').insert(rows)       : Promise.resolve({ error: null } as any),
+      sealedRows.length ? supabase.from('vault_category_sealed').insert(sealedRows) : Promise.resolve({ error: null } as any),
+    ])
+    if (rulesRes.error || sealRes.error) {
+      setAccessMsg('Could not save your choices. Please try again.')
+      setSavingAccess(false)
+      return
+    }
+    setSavingAccess(false)
+    setShowAccessModal(false)
   }
 
   async function loadMediaGrid() {
@@ -690,6 +772,30 @@ export default function VaultScreen() {
                 </Text>
               </View>
             )}
+            {/* ── Who can see what — per-person vault access (kept above the
+                   tiles so seniors see it without scrolling) ── */}
+            <TouchableOpacity
+              onPress={openAccessModal}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Choose which family member can see each section of your vault documents"
+              style={{
+                marginBottom: 16, minHeight: 60,
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                backgroundColor: C.mauveDim, borderRadius: 16,
+                borderWidth: 1.5, borderColor: C.accent + '66',
+                paddingHorizontal: 16, paddingVertical: 12,
+              }}>
+              <Text style={{ fontSize: 28 }}>🔐</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.offWhite, fontSize: 16, fontWeight: '700' }}>Who Can See My Documents</Text>
+                <Text style={{ color: C.grey, fontSize: 13, lineHeight: 18 }}>
+                  Choose which family member can see each section of your vault
+                </Text>
+              </View>
+              <Text style={{ fontSize: 22, color: C.grey }}>›</Text>
+            </TouchableOpacity>
+
             {/* 2-column category tiles — rising embers effect */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               {VAULT_CATEGORIES.map((cat, idx) => (
@@ -1432,6 +1538,102 @@ export default function VaultScreen() {
         visible={showPartnersModal}
         onClose={() => setShowPartnersModal(false)}
       />
+
+      {/* ── Who Can See What Modal ── */}
+      <Modal visible={showAccessModal} animationType="slide" transparent onRequestClose={() => setShowAccessModal(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <LinearGradient colors={WARM} style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '88%' }}>
+
+            <Text style={{ color: WM.title, fontSize: 20, fontWeight: '700' }}>Who Can See My Documents</Text>
+            <Text style={{ color: WM.sub, fontSize: 14, marginTop: 4, marginBottom: 10, lineHeight: 20 }}>
+              Your trusted contacts are already selected for each section. Tap a name
+              to remove or add someone. If you remove everyone from a section, it stays
+              sealed — no one will be able to see it.
+            </Text>
+            <View style={{ backgroundColor: WM.cardBgAlt, borderColor: WM.border, borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 14 }}>
+              <Text style={{ color: WM.sub, fontSize: 12, lineHeight: 17 }}>
+                This shares copies of your documents and information only. It does not
+                give away money, property, or belongings, and it is not a legal will.
+              </Text>
+            </View>
+
+            {accessLoading ? (
+              <ActivityIndicator color={WM.accent} style={{ marginVertical: 30 }} />
+            ) : accessMembers.length === 0 ? (
+              <View style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1, borderRadius: 14, padding: 16, marginBottom: 14 }}>
+                <Text style={{ color: WM.title, fontSize: 15, lineHeight: 22 }}>
+                  Add family members first — then you can choose who receives each part of your vault.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={true} style={{ flexGrow: 0 }}>
+                {VAULT_CATEGORIES.map(cat => {
+                  const chosen = accessRules[cat.key] || []
+                  return (
+                    <View key={cat.key} style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 24 }}>{cat.icon}</Text>
+                        <Text style={{ color: WM.title, fontSize: 17, fontWeight: '700' }}>{cat.label}</Text>
+                      </View>
+                      <Text style={{
+                        color: chosen.length === 0 ? '#C0392B' : WM.sub,
+                        fontSize: 13, marginTop: 2, marginBottom: 10,
+                        fontWeight: chosen.length === 0 ? '700' : '400',
+                      }}>
+                        {chosen.length === 0
+                          ? '⚠️ Sealed — no one will be able to see this section'
+                          : `${chosen.length} ${chosen.length === 1 ? 'person' : 'people'} will be able to see these documents`}
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {accessMembers.map(m => {
+                          const on = chosen.includes(m.id)
+                          return (
+                            <TouchableOpacity
+                              key={m.id}
+                              onPress={() => toggleAccess(cat.key, m.id)}
+                              activeOpacity={0.8}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${on ? 'Remove' : 'Give'} ${m.name} access to ${cat.label}`}
+                              style={{
+                                minHeight: 48, justifyContent: 'center',
+                                paddingHorizontal: 16, paddingVertical: 10,
+                                borderRadius: 24, borderWidth: 2,
+                                backgroundColor: on ? WM.accentBg : WM.cardBgAlt,
+                                borderColor: on ? WM.accent : WM.border,
+                              }}>
+                              <Text style={{ color: WM.title, fontSize: 16, fontWeight: on ? '700' : '500' }}>
+                                {on ? '✓ ' : ''}{m.name}
+                              </Text>
+                            </TouchableOpacity>
+                          )
+                        })}
+                      </View>
+                    </View>
+                  )
+                })}
+              </ScrollView>
+            )}
+
+            {accessMsg ? <Text style={{ color: '#C0392B', fontSize: 14, marginTop: 8 }}>{accessMsg}</Text> : null}
+
+            {accessMembers.length > 0 && !accessLoading && (
+              <TouchableOpacity onPress={saveAccessRules} disabled={savingAccess} activeOpacity={0.85} style={{ marginTop: 12 }}>
+                <View style={{ backgroundColor: WM.accent, borderRadius: 14, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}>
+                  {savingAccess
+                    ? <ActivityIndicator color={WM.title} />
+                    : <Text style={{ color: WM.title, fontSize: 17, fontWeight: '700' }}>Save</Text>}
+                </View>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setShowAccessModal(false)} activeOpacity={0.85} style={{ marginTop: 10, marginBottom: 6 }}>
+              <View style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1, borderRadius: 14, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}>
+                <Text style={{ color: WM.title, fontSize: 17 }}>Cancel</Text>
+              </View>
+            </TouchableOpacity>
+
+          </LinearGradient>
+        </View>
+      </Modal>
 
       {/* ── Media Lightbox ── */}
       <Modal visible={!!viewingMedia} transparent animationType="fade" onRequestClose={() => setViewingMedia(null)}>

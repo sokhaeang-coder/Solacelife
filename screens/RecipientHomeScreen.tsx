@@ -19,6 +19,18 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../lib/supabase'
 import { C, SKY, WM } from '../lib/constants'
 import { s } from '../lib/styles'
+import { isEncrypted } from '../lib/encryption'
+
+// Vault category display (matches VAULT_CATEGORIES in VaultScreen)
+const VAULT_CAT_LABELS: Record<string, { label: string; icon: string }> = {
+  media:             { label: 'Precious',  icon: '✨' },
+  personal_messages: { label: 'Messages',  icon: '✉️' },
+  legal:             { label: 'Legal',     icon: '📜' },
+  financial:         { label: 'Financial', icon: '💰' },
+  medical:           { label: 'Medical',   icon: '🏥' },
+  property:          { label: 'Property',  icon: '🏠' },
+  digital_assets:    { label: 'Passwords', icon: '🔑' },
+}
 
 // ── Types ────────────────────────────────────────────────────
 interface ReceivedMemory {
@@ -66,6 +78,36 @@ export default function RecipientHomeScreen({ navigation }: any) {
   const [memories,   setMemories]   = useState<ReceivedMemory[]>([])
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [vaultItems, setVaultItems] = useState<any[]>([])
+
+  // Released legacy-vault items shared with this recipient.
+  // RLS does the filtering: only items from released vaults whose
+  // category rules include this member come back.
+  async function fetchReleasedVault() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('vault_items')
+        .select('id, user_id, title, category, description, content, file_path, file_name, file_type')
+        .neq('user_id', user.id)
+        .order('category')
+      setVaultItems(data || [])
+    } catch (e) {
+      console.warn('Released vault fetch error:', e)
+    }
+  }
+
+  async function openVaultFile(item: any) {
+    if (!item.file_path) return
+    const { data } = await supabase.storage.from('vault-files').createSignedUrl(item.file_path, 3600)
+    if (data?.signedUrl) {
+      Linking.openURL(data.signedUrl).catch(() =>
+        Alert.alert('Unable to open', 'Could not open this document.'))
+    } else {
+      Alert.alert('Unable to open', 'Could not open this document.')
+    }
+  }
 
   async function fetchMemories() {
     try {
@@ -126,11 +168,12 @@ export default function RecipientHomeScreen({ navigation }: any) {
     }
   }
 
-  useEffect(() => { fetchMemories() }, [])
+  useEffect(() => { fetchMemories(); fetchReleasedVault() }, [])
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
     fetchMemories()
+    fetchReleasedVault()
   }, [])
 
   function openMemory(item: ReceivedMemory) {
@@ -222,6 +265,63 @@ export default function RecipientHomeScreen({ navigation }: any) {
     )
   }
 
+  // ── Legacy Vault (released vault items shared with this member) ──
+  function LegacyVaultSection() {
+    if (vaultItems.length === 0) return null
+
+    // Group by category, preserving VAULT_CAT_LABELS order
+    const grouped: Record<string, any[]> = {}
+    vaultItems.forEach(item => {
+      grouped[item.category] = [...(grouped[item.category] || []), item]
+    })
+
+    return (
+      <View style={styles.vaultWrap}>
+        <Text style={styles.vaultHeaderIcon}>🔐</Text>
+        <Text style={styles.vaultHeaderTitle}>Shared Documents</Text>
+        <Text style={styles.vaultHeaderSub}>
+          Copies of documents and information they chose to share with you
+        </Text>
+
+        {Object.keys(VAULT_CAT_LABELS).filter(k => grouped[k]).map(catKey => (
+          <View key={catKey} style={styles.vaultCatBlock}>
+            <View style={styles.vaultCatHeader}>
+              <Text style={styles.vaultCatIcon}>{VAULT_CAT_LABELS[catKey].icon}</Text>
+              <Text style={styles.vaultCatLabel}>{VAULT_CAT_LABELS[catKey].label}</Text>
+            </View>
+
+            {grouped[catKey].map(item => (
+              <View key={item.id} style={styles.vaultCard}>
+                <Text style={styles.vaultCardTitle}>{item.title}</Text>
+                {item.description ? (
+                  <Text style={styles.vaultCardDesc}>{item.description}</Text>
+                ) : null}
+                {item.content ? (
+                  isEncrypted(item.content)
+                    ? <Text style={styles.vaultCardLocked}>🔒 Some details are locked — they were encrypted on the sender's device</Text>
+                    : <Text style={styles.vaultCardDesc}>{item.content}</Text>
+                ) : null}
+                {item.file_path ? (
+                  <TouchableOpacity
+                    onPress={() => openVaultFile(item)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open document ${item.file_name || item.title}`}
+                    style={styles.vaultFileBtn}>
+                    <Text style={styles.vaultFileBtnIcon}>📑</Text>
+                    <Text style={styles.vaultFileBtnText} numberOfLines={1}>
+                      Open {item.file_name || 'document'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    )
+  }
+
   if (loading) {
     return (
       <LinearGradient colors={SKY} style={styles.loadingWrap}>
@@ -239,6 +339,7 @@ export default function RecipientHomeScreen({ navigation }: any) {
           renderItem={({ item }) => <MemoryCard item={item} />}
           ListHeaderComponent={<Header />}
           ListEmptyComponent={<EmptyState />}
+          ListFooterComponent={<LegacyVaultSection />}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={true}
           refreshControl={
@@ -288,6 +389,49 @@ const styles = StyleSheet.create({
   emptyIcon:  { fontSize: 52, marginBottom: 18 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: C.offWhite, marginBottom: 10, textAlign: 'center' },
   emptySub:   { fontSize: 15, color: C.grey, textAlign: 'center', lineHeight: 22 },
+
+  // ── Legacy Vault section ──
+  vaultWrap: {
+    marginTop:    28,
+    paddingTop:   24,
+    borderTopWidth: 1,
+    borderTopColor: C.mauveDim,
+    alignItems:   'center',
+  },
+  vaultHeaderIcon:  { fontSize: 40, marginBottom: 8 },
+  vaultHeaderTitle: { fontSize: 24, fontWeight: '700', color: C.offWhite, marginBottom: 4 },
+  vaultHeaderSub:   { fontSize: 14, color: C.grey, textAlign: 'center', marginBottom: 18, lineHeight: 20 },
+  vaultCatBlock:    { width: '100%', marginBottom: 18 },
+  vaultCatHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  vaultCatIcon:     { fontSize: 24 },
+  vaultCatLabel:    { fontSize: 18, fontWeight: '700', color: C.offWhite },
+  vaultCard: {
+    backgroundColor: C.bg2,
+    borderRadius:    16,
+    borderWidth:     1,
+    borderColor:     C.mauveDim,
+    padding:         16,
+    marginBottom:    10,
+    gap:             6,
+  },
+  vaultCardTitle:  { fontSize: 16, fontWeight: '700', color: C.offWhite, lineHeight: 22 },
+  vaultCardDesc:   { fontSize: 14, color: C.grey, lineHeight: 20 },
+  vaultCardLocked: { fontSize: 13, color: C.greyDim, fontStyle: 'italic', lineHeight: 18 },
+  vaultFileBtn: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             8,
+    minHeight:       48,
+    marginTop:       4,
+    backgroundColor: 'rgba(240,98,146,0.15)',
+    borderWidth:     1,
+    borderColor:     'rgba(240,98,146,0.4)',
+    borderRadius:    12,
+    paddingHorizontal: 14,
+  },
+  vaultFileBtnIcon: { fontSize: 22 },
+  vaultFileBtnText: { fontSize: 15, fontWeight: '600', color: '#F5CEAA', flexShrink: 1 },
 
   card: {
     flexDirection:    'row',

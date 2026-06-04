@@ -264,7 +264,10 @@ export function getSuggestedOccasionKeys(
   relationship: string,
   userOccasionKeys: string[] = [],
 ): string[] {
-  const relSpecific = RELATIONSHIP_OCCASION_KEYS[relationship] ?? []
+  // Case-insensitive lookup — some older rows stored lowercase relationships
+  const relKey = Object.keys(RELATIONSHIP_OCCASION_KEYS)
+    .find(k => k.toLowerCase() === (relationship || '').toLowerCase())
+  const relSpecific = relKey ? RELATIONSHIP_OCCASION_KEYS[relKey] : []
   // Merge: relationship-specific → universals → user's existing occasions
   const combined = [...new Set([...relSpecific, ...UNIVERSAL_OCCASION_KEYS, ...userOccasionKeys])]
   // Guard: only return keys that exist in the catalogue

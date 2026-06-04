@@ -42,7 +42,7 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
       if (!user) { setLoading(false); return }
       const { data } = await supabase
         .from('family_members')
-        .select('id, name, phone, relationship')
+        .select('id, name, phone, relationship, email')
         .eq('user_id', user.id)
         .order('name')
       setMembers(data || [])
@@ -93,18 +93,28 @@ export default function OnboardingEmergencyScreen({ navigation }: any) {
         .eq('user_id', user.id)
 
       await Promise.all(
-        selected.map((id, i) =>
-          supabase.from('family_members')
-            .update({ is_emergency_contact: true, emergency_priority: i + 1 })
+        selected.map((id, i) => {
+          const m = members.find(x => x.id === id)
+          return supabase.from('family_members')
+            .update({
+              is_emergency_contact: true,
+              emergency_priority:   i + 1,
+              // Consent can only be requested by email — members added with
+              // phone only stay 'none' until an email is added in Family tab
+              ...(m?.email ? { emergency_consent_status: 'pending' } : {}),
+            })
             .eq('id', id)
-        )
+        })
       )
 
       await refreshEmergencyNotification(user.id)
 
       // Fire consent emails — is_new_member=true because they were just
-      // added AND designated in the same onboarding flow
+      // added AND designated in the same onboarding flow. Skip members
+      // without an email address; the Family tab will prompt for it.
       selected.forEach(id => {
+        const m = members.find(x => x.id === id)
+        if (!m?.email) return
         fetch(`${SUPABASE_URL}/functions/v1/send-emergency-contact-email`, {
           method:  'POST',
           headers: {

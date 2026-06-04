@@ -615,7 +615,10 @@ export default function FamilyScreen() {
   // ── Open edit modal pre-filled with existing member data ──────────────────
   function handleEditMember(member: any) {
     setEditingMember(member)
-    const rel = member.relationship || ''
+    // Normalize to the canonical pill label — older rows (e.g. from onboarding)
+    // stored lowercase ("wife"), which wouldn't match the "Wife" pill.
+    const relRaw = member.relationship || ''
+    const rel = RELATIONSHIPS.find(r => r.toLowerCase() === relRaw.toLowerCase()) || relRaw
     setOriginalRelationship(rel)
     setForm({
       name:               member.name               || '',
@@ -667,10 +670,18 @@ export default function FamilyScreen() {
       // ── UPDATE existing member ──────────────────────────────
       const wasAlreadyTrusted = editingMember.is_trusted_contact === true
       const nowTrusted        = form.trusted === true
+      const newEmail          = form.email.trim().toLowerCase()
+      // Member previously had no email (e.g. added during onboarding by phone) —
+      // consent could never be requested. Kick off the flow now that we have one.
+      const emailJustAdded    = !editingMember.email && !!newEmail
+      const needsConsentKickoff =
+        (!wasAlreadyTrusted && nowTrusted) ||
+        (emailJustAdded
+          && (nowTrusted || editingMember.is_emergency_contact)
+          && (editingMember.emergency_consent_status ?? 'none') === 'none')
 
-      // If trusted contact is being newly turned ON, reset consent status to pending
       const updatePayload: any = { ...sharedFields }
-      if (!wasAlreadyTrusted && nowTrusted) {
+      if (needsConsentKickoff) {
         updatePayload.emergency_consent_status = 'pending'
       }
       // If trusted contact is being turned OFF, clear consent status
@@ -689,13 +700,15 @@ export default function FamilyScreen() {
       }
       targetId = editingMember.id
 
-      // Fire consent email if trusted contact was just newly enabled
-      if (!wasAlreadyTrusted && nowTrusted && editingMember.email) {
+      // Fire consent email when the role was just enabled OR an email was just
+      // added for a member already holding the role (uses the NEW email — the
+      // old editingMember.email may be stale or null)
+      if (needsConsentKickoff && newEmail) {
         supabase.functions.invoke('send-emergency-contact-email', {
           body: { family_member_id: targetId, is_new_member: false },
         }).then(({ error: fnErr }) => {
           if (fnErr) console.warn('Emergency consent email failed:', fnErr.message)
-          else console.log('Emergency consent email sent to', editingMember.email)
+          else console.log('Emergency consent email sent to', newEmail)
         })
       }
 
@@ -984,7 +997,9 @@ export default function FamilyScreen() {
         .update({
           is_emergency_contact:     true,
           emergency_priority:       nextPriority,
-          emergency_consent_status: 'pending',
+          // Consent can only be requested by email — stays 'none' until one is
+          // added (the member card prompts for it), then edit-save kicks it off
+          ...(member.email ? { emergency_consent_status: 'pending' } : {}),
         })
         .eq('id', member.id)
 
@@ -1012,6 +1027,7 @@ export default function FamilyScreen() {
   // Only count accepted emergency contacts as "active" for display / limit purposes
   const emergencyCount        = members.filter(m => m.is_emergency_contact && m.emergency_consent_status === 'accepted').length
   const emergencyPendingCount = members.filter(m => m.is_emergency_contact && m.emergency_consent_status === 'pending').length
+  const trustedCount          = members.filter(m => m.is_trusted_contact).length
 
   // ── Helpers for the date display fields ───────────────────────────────────
   function DateField({
@@ -1221,7 +1237,7 @@ export default function FamilyScreen() {
             {members.length > 0 ? (<>
 
             {/* ── Trusted Contact Banner ── */}
-            {emergencyCount === 0 && emergencyPendingCount === 0 ? (
+            {trustedCount === 0 && emergencyCount === 0 && emergencyPendingCount === 0 ? (
               <View style={{ marginHorizontal: 20, marginBottom: 16, padding: 14, borderRadius: 14,
                 backgroundColor: '#E8453C18', borderWidth: 1, borderColor: '#E8453C44',
                 flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -1232,6 +1248,20 @@ export default function FamilyScreen() {
                   </Text>
                   <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
                     Tap ✏️ on a family member and enable Trusted Contact so Solace can notify them if you miss your check-ins.
+                  </Text>
+                </View>
+              </View>
+            ) : emergencyCount === 0 && emergencyPendingCount === 0 ? (
+              <View style={{ marginHorizontal: 20, marginBottom: 16, padding: 14, borderRadius: 14,
+                backgroundColor: '#3dba6218', borderWidth: 1, borderColor: '#3dba6244',
+                flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontSize: 24 }}>⭐</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.success, fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
+                    {trustedCount} Trusted Contact{trustedCount > 1 ? 's' : ''} Set
+                  </Text>
+                  <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
+                    They will be able to see your vault documents when the time comes. To also have Solace alert them if you ever miss your check-ins, tap ✏️ and turn on Emergency Contact.
                   </Text>
                 </View>
               </View>
@@ -1256,7 +1286,7 @@ export default function FamilyScreen() {
                     ) : null}
                     <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
                       {emergencyCount > 0
-                        ? 'They will be notified if you miss check-ins, and will have access to your vault.'
+                        ? 'They will be notified if you miss check-ins, and will be able to see the vault documents you chose for them.'
                         : 'Consent request sent — waiting for their reply.'}
                     </Text>
                   </View>
@@ -1414,7 +1444,11 @@ export default function FamilyScreen() {
                               </Text>
                             </View>
                           ) : null}
-                          {!tm.email_confirmed ? (
+                          {!tm.email ? (
+                            <Text style={{ color: '#FFB800', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
+                              ✉️ Add their email (tap ✏️) so we can ask them to accept this role
+                            </Text>
+                          ) : !tm.email_confirmed ? (
                             <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '700' }}>⚠️ Not confirmed</Text>
                           ) : null}
                         </View>
@@ -1488,7 +1522,11 @@ export default function FamilyScreen() {
                               </Text>
                             </View>
                           ) : null}
-                          {!m.email_confirmed ? (
+                          {(m.is_trusted_contact || m.is_emergency_contact) && !m.email ? (
+                            <Text style={{ color: '#FFB800', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
+                              ✉️ Add their email (tap ✏️) so we can ask them to accept this role
+                            </Text>
+                          ) : !m.email_confirmed ? (
                             <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '700' }}>⚠️ Not confirmed</Text>
                           ) : null}
                         </View>
@@ -1813,7 +1851,7 @@ export default function FamilyScreen() {
                     value={form.phone} onChangeText={v => setForm(f => ({ ...f, phone: v }))}
                     keyboardType="phone-pad" />
 
-                  <Text style={[s.fieldLabel, { color: '#7A3448' }]}>Relationship</Text>
+                  <Text style={[s.fieldLabel, { color: '#7A3448' }]}>Who is this person to you?</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       {RELATIONSHIPS.map(rel => (
@@ -2131,7 +2169,7 @@ export default function FamilyScreen() {
                       Two layers of protection
                     </Text>
                     <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 20 }}>
-                      Your trusted contacts are already set up in Solace Life — they'll be notified if you miss check-ins and will have access to your vault.{'\n\n'}
+                      Your trusted contacts are already set up in Solace Life — they'll be notified if you miss check-ins and will be able to see the vault documents you chose for them.{'\n\n'}
                       This optional step adds them to iPhone Medical ID so first responders can also call them directly from your locked screen — no passcode needed. Apple's security prevents apps from doing this automatically, so it must be set up manually.
                     </Text>
                   </View>

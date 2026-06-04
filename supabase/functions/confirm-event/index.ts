@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
       if (!member.email) continue
       await sendEmail({
         to:      member.email,
-        subject: `Solace Life: ${ownerName}'s vault has been released`,
+        subject: `Solace Life: ${ownerName} shared documents and messages with you`,
         html: vaultReleaseEmailHtml({ recipientName: member.name, ownerName }),
       })
     }
@@ -146,7 +146,7 @@ p{color:#9985BB;line-height:1.6;margin-bottom:24px}
 <body>
 <div class="box">
   <h2>⚠️ Confirm Event</h2>
-  <p>You are about to release this person's legacy vault to their designated family members. This action cannot be undone.</p>
+  <p>You are about to make this person's vault documents and messages visible to the family members they chose. This shares copies of information only — it does not transfer ownership of any property or assets. This action cannot be undone.</p>
   <div class="warn">Only proceed if you have confirmed this event has occurred. Their family will be notified immediately.</div>
   <button class="btn" onclick="doConfirm()">Confirm Event & Release Vault</button>
   <div><span class="cancel" onclick="window.close()">Cancel — they are fine</span></div>
@@ -192,12 +192,13 @@ async function doConfirm() {
 function vaultReleaseEmailHtml({ recipientName, ownerName }: { recipientName: string; ownerName: string }) {
   return `
   <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#1a1535;padding:32px 24px;background:#f7f9ff;border-radius:16px;border:1px solid #c9e0ff">
-    <h2 style="color:#2C3E80;margin-bottom:8px">🔓 Vault Released — Solace Life</h2>
+    <h2 style="color:#2C3E80;margin-bottom:8px">💌 Documents Shared With You — Solace Life</h2>
     <p>Hi ${recipientName},</p>
-    <p><strong>${ownerName}</strong> has left you a legacy in Solace Life. Their vault and personal messages are now available to you.</p>
-    <p>Please open the Solace Life app to access what they left behind.</p>
+    <p><strong>${ownerName}</strong> chose to share documents, information, and personal messages with you in Solace Life. They are now available for you to see.</p>
+    <p>Please open the Solace Life app to view what they shared with you.</p>
     <hr style="border:none;border-top:1px solid #e0e8f5;margin:24px 0"/>
-    <p style="color:#9090b0;font-size:12px">Solace Life — Memories and legacies, preserved with care.</p>
+    <p style="color:#9090b0;font-size:11px">Solace Life shares copies of documents and information only. It does not transfer ownership of money, property, or belongings, and it is not a legal will.</p>
+    <p style="color:#9090b0;font-size:12px">Solace Life — Memories preserved with care.</p>
   </div>`
 }
 

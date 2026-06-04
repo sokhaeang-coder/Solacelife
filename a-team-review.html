@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "a-team", "runs": [{"id": "eval-0-recipient-replies-with_skill", "prompt": "A team, should we let recipients reply to delivered memories? like Taka gets a video on her birthday and can send a thank you back. or does that turn us into a messaging app", "eval_id": 0, "outputs": [{"name": "response.md", "type": "text", "content": "**The Customer Psychologist says: the thank-you back is the missing half of the product's emotional promise.** The sender's deepest fear isn't that the video won't arrive \u2014 it's that it will land in silence and they'll never know it mattered. Taka watching a birthday video and having no way to say \"I cried, thank you, I love you\" leaves both sides with an open loop. A single reply isn't messaging; it's the receipt for the most important delivery this app makes. Families will repeat the story \"Mom sent me a video, and I got to tell her what it meant\" \u2014 that's word-of-mouth gold.\n\n**The Product Advisor says: the line between \"reaction\" and \"messaging app\" is whether a reply can start a thread.** Scope this as a *response to a delivery*, not a conversation: one reply (or a short reaction + optional note) attached to the delivered memory, no reply-to-the-reply inside the app. The moment Reply has a Reply button, you're building read states, notifications, moderation, and unread badges \u2014 a second product. Also count the silent case: for posthumous deliveries the sender is gone, so the reply needs a different meaning \u2014 it becomes a tribute attached to the memory, not a message awaiting an answer. Design both states on day one or the posthumous one will feel broken.\n\n**The Estate Lawyer says: the posthumous case is also where the sensitivity lives, not the liability.** A reply to a living sender on a birthday is low-risk. But a \"send a thank you\" prompt on a memory delivered after death \u2014 addressed to whom? \u2014 can read as ghoulish if worded carelessly, and recipients may not realize other family members can see it. Be explicit about who sees a reply (sender only, or the family circle?) before you build it; \"private note to Mom\" and \"comment visible to all recipients\" are very different consent models, and seniors will assume privacy unless told otherwise.\n\n**The Senior-UX Advisor says: keep it to one big button and canned warmth.** A 75-year-old recipient should see, right under the video: a large \"Send a thank you\" button, then three tappable phrases (\"Thank you \u2764\ufe0f\", \"This made my day\", \"I love you\") plus an optional voice note \u2014 voice, not typing, because typing a heartfelt paragraph on a phone keyboard is where seniors abandon. On the sender side, the reply should appear attached to the memory they sent, not in a new \"Inbox\" tab; a new tab is a new thing to not find.\n\n**Jordan says: build the smallest version and let the 10 testers tell you the rest.** One reaction + optional voice note, attached to the memory, no threads, living-sender deliveries only for v1. Posthumous tributes are a real feature but a separate, more delicate design \u2014 don't block the birthday case on solving the grief case. You'll know within two beta phone calls whether recipients even want this or whether they just text back like normal humans.\n\n**Verdict:** Yes \u2014 build replies, but as a *closed loop*, not a channel: one reaction/voice-note reply per delivered memory, attached to the memory itself, visible to the sender, with no reply-to-reply. Ship it for living-sender occasion deliveries first; design the posthumous \"tribute\" variant separately with the Lawyer's visibility question answered in plain words on screen. What would change the answer: if beta testers say \"I just called her\" \u2014 then the feature is redundant and a \"Mark as seen \u2764\ufe0f\" indicator might be all you need.\n\nOne question worth sleeping on: when a sender passes, do their past replies-received become part of the legacy too \u2014 does Taka's \"thank you, Mom\" get preserved alongside the video forever, and did Taka know that when she sent it?\n"}], "grading": null}, {"id": "eval-0-recipient-replies-without_skill", "prompt": "A team, should we let recipients reply to delivered memories? like Taka gets a video on her birthday and can send a thank you back. or does that turn us into a messaging app", "eval_id": 0, "outputs": [{"name": "response.md", "type": "text", "content": "# Should recipients be able to reply to delivered memories?\n\nShort answer: **yes, but not as open messaging.** Give recipients a way to *respond to a specific memory* \u2014 and deliberately stop short of a chat inbox. Done right, this deepens the emotional core of the product without turning you into WhatsApp. Done wrong (or too broadly), it creates a moderation, privacy, and grief-handling burden you don't want.\n\nThe key is to frame the feature correctly: **it's not \"messaging,\" it's \"completing the loop on a gift.\"** Taka receiving a birthday video and being able to say thank you is the natural close of that single moment. That's a feature. A persistent two-way thread where she and Grandma trade messages all week is a different product.\n\n---\n\n## Why this is worth doing\n\n1. **It closes the emotional loop.** Right now your value flows one direction: sender records, recipient receives. A reply lets the sender *feel received*. For a living sender delivering on a birthday, the thank-you back is often the most meaningful part of the whole exchange \u2014 and it's the moment that makes them want to record the next one. That's a retention engine.\n\n2. **It increases sender confidence.** A subtle but real fear for your senders is \"will this even land? will they care?\" A reply (even a heart tap) is proof their memory mattered. That proof drives more recording.\n\n3. **You already have the plumbing.** Memories carry `delivered_at` and a `delivered` status, and the recipient home screen already lists delivered items. A reply attaches to an existing delivered memory \u2014 you're adding a child object, not a new messaging system.\n\n---\n\n## The two cases you must treat differently\n\nThis is the crux, because your app delivers in two very different contexts:\n\n### Case A \u2014 Occasion delivery, sender alive (birthday video \u2192 Taka)\nThe sender is around to receive the thank-you. This is the clean, joyful case. **Replies make obvious sense here.** Taka taps the video, taps \"Send a thank you,\" records 20 seconds or types a note, and Grandma gets it. Beautiful.\n\n### Case B \u2014 After-passing delivery (memory unsealed because the sender died)\nThere is no one to reply to. A \"reply\" box here is, at best, pointless and at worst quietly devastating \u2014 it implies a recipient can reach someone who is gone. **Do not show a reply affordance on memories delivered post-passing.**\n\nBut there's a real, tender need adjacent to it: people *do* want to \"talk back\" to someone they've lost. So instead of a reply, offer a **private journal / \"write back\" space** that is explicitly one-sided and never sent anywhere \u2014 \"Leave a note for Grandma (kept just for you).\" Same gesture of writing back, honest framing, zero false hope. Some products in this space find this is one of their most loved features precisely because it's *not* messaging.\n\nSo: **reply when the sender can receive it; private reflection when they can't.** Detecting which case you're in is trivial \u2014 you already know whether delivery was occasion-triggered or passing-triggered.\n\n---\n\n## How to keep it from becoming a messaging app\n\nThe line between \"respond to a gift\" and \"chat app\" is mostly about *constraints*. Hold these and you stay on the right side:\n\n1. **Replies attach to a memory, not to a person.** There is no inbox, no contact thread, no \"compose new message.\" You can only respond *to something that was delivered to you*. The memory is always the anchor.\n\n2. **One reply per memory (maybe with one follow-up from the sender).** Allow the recipient's response and, optionally, a single acknowledgment back from the sender. Stop there. No infinite back-and-forth. This single rule is what most prevents thread creep.\n\n3. **No real-time / no presence.** No typing indicators, no \"online now,\" no read-receipt anxiety. Asynchronous, slow, intentional \u2014 matches the product's whole tone.\n\n4. **No recipient-to-recipient and no recipient-initiated contact.** A recipient can never start a conversation or message another family member. They can only reply up the chain to the person who gave them the memory.\n\n5. **Tiered effort \u2014 let \"thank you\" be one tap.** Offer a ladder: a reaction (heart / \"this meant a lot\"), then a short text note, then optionally a recorded video/voice reply. Most people will use the lightest option, and a reaction alone delivers ~80% of the emotional payoff with ~5% of the moderation surface.\n\nIf you keep all five, what you've built reads as \"a thank-you card you can send back,\" not a messenger.\n\n---\n\n## The risks to plan for before you ship\n\n- **Moderation / abuse.** Opening any inbound channel means someone can send something hurtful to a senior. You already have an `abuse_reports` table and consent scaffolding \u2014 extend it: every reply must be reportable and blockable, and a sender must be able to mute replies from a given recipient. Reactions-only is the lowest-risk default if you want to phase it.\n- **Grief safety.** Covered above \u2014 never surface \"reply\" on post-passing deliveries. Get this wrong once and it's the kind of thing that ends up in a bad app-store review or a press story.\n- **Notification tone.** A reply notification to a senior should feel like a gift arriving, not a \"new message\" ping. Mind the copy.\n- **Storage & cost.** Video replies are real media. Default the lightweight options; treat recorded video replies as the heaviest tier and gate accordingly.\n- **Scope discipline.** The moment someone asks for \"can I just message them directly\" \u2014 that's the signal you're being pulled toward a different product. The answer is the private journal (for the gone) or a new recorded memory (for the living), not a chat box.\n\n---\n\n## Recommendation\n\n**Ship it, scoped tightly, in this order:**\n\n1. **Phase 1 \u2014 Reactions.** On occasion-delivered memories where the sender is alive, let recipients send a one-tap reaction/acknowledgment. Lowest risk, fastest to build, captures most of the emotional value. Validate that senders love getting them.\n2. **Phase 2 \u2014 Short replies.** Add a short text + voice/video reply (one per memory), fully reportable/blockable, with a sender mute control.\n3. **Phase 3 \u2014 Private \"write back\" space.** For post-passing memories, a one-sided reflection journal \u2014 never sent, clearly framed as personal.\n\nEach phase reuses the memory object as the anchor and never introduces an inbox. That's what lets you say honestly in your own marketing: *Solace Life is not a messaging app \u2014 it's a place where memories are given, received, and answered, one moment at a time.*\n\nA nice tell that you're on the right track: if the feature only makes sense *because a specific memory was delivered*, it's a Solace feature. If it makes sense *with no memory at all*, you've drifted into chat \u2014 pull back.\n"}], "grading": null}, {"id": "eval-1-canada-vs-us-launch-with_skill", "prompt": "the team's verdict on launching in canada first vs US \u2014 our pricing is USD but we're in BC", "eval_id": 1, "outputs": [{"name": "response.md", "type": "text", "content": "Convening the A-team on the launch-geography question: Canada-first vs US-first, given USD pricing and a BC home base. The CFO, Estate Lawyer, Marketer, and Jordan have standing here.\n\n**The CFO says: the US is where the unit economics already point \u2014 your price is denominated there.** $99 USD is roughly $135 CAD; for a Canadian senior on a fixed pension that reads as a premium product, while for an American it's a round, familiar number. Apple handles the currency either way \u2014 the App Store will charge Canadians in CAD at whatever tier maps to your USD price, so \"we're in BC\" costs you nothing operationally \u2014 but the market math is lopsided: ~62 million Americans are 65+, versus ~7.5 million Canadians. Same app, same Apple cut of 15% (you'll be under the Small Business Program), nine times the addressable market. One real Canadian cost to check: once you cross $30K CAD in worldwide revenue you must register for GST/HST on Canadian sales \u2014 a bookkeeping task, not a strategy driver.\n\n**The Estate Lawyer says: launching at home first is the legally conservative move, and the gap is smaller than you fear.** Our standing position \u2014 copies of information only, never an instrument of bequest \u2014 protects you in both countries, and neither Canada nor the US licenses \"memory apps.\" But the US is fifty jurisdictions with fifty flavors of plaintiff's lawyer, and states like California layer on privacy regimes (CCPA) and post-mortem data statutes (RUFADAA is adopted nearly everywhere) that you should have language for before meaningful US volume. PIPEDA plus BC's PIPA is one coherent regime you can actually read in an afternoon. I'd phrase it this way: Canada is where you can afford to make your first mistake.\n\n**The Marketer says: don't confuse \"first market\" with \"only market\" \u2014 soft-launch Canada, position for America.** The classic playbook (every Canadian app from Wattpad onward) is to use Canada as the quiet rehearsal stage: same language, same App Store, similar seniors, but your press misses and onboarding stumbles don't burn the big market. Emotionally, your story is *stronger* in the US anyway \u2014 Americans are the ones drowning in $2,000 estate-attorney quotes, and \"preserve your voice for your grandchildren for $99/year\" lands hardest where the alternative is expensive. Keep the USD price on the website, let Apple localize, and write your launch copy for an American reader from day one.\n\n**Jordan says: your 10 beta seniors decide this, not a geography debate.** Where are they \u2014 BC, or scattered? TestFlight doesn't care about borders, and neither does a phone call. Ship to whoever you can get on the phone, watch where organic word-of-mouth actually spreads (these users recruit their *family*, who are wherever they are \u2014 half of them will pull in American relatives without you doing anything), and let that tell you which storefront to push first. Picking a country before you've watched ten real users is over-planning.\n\n**Verdict:** Soft-launch in Canada first \u2014 but as a rehearsal, not a strategy. Release on both the Canadian and US App Stores simultaneously (it's one checkbox each; there's no reason to geo-block), spend your *marketing effort* on Canada/BC for the first 60\u201390 days where mistakes are cheap and the privacy regime is one law instead of fifty, then shift paid and PR effort to the US once onboarding survives contact with real seniors. Keep pricing in USD as the anchor and let Apple's tiers localize the CAD price \u2014 just sanity-check that the CAD sticker (~$139.99 at Apple's tier) doesn't read as gouging to your own beta testers. What would change the answer: if your beta seniors turn out to be mostly American, or if a US partner/press opportunity appears, flip the marketing order \u2014 the infrastructure decision (launch both stores) stays the same either way.\n\nOne question worth sleeping on: your product's whole promise activates *after a death* \u2014 and death notification, executor contact, and survivor expectations are shaped by local norms. Do you know yet how an American family, versus a Canadian one, will try to \"claim\" the account when the time comes? That answer might matter more than which flag is on the launch post.\n\n*(Standard flag: the Lawyer's points are orientation, not legal advice \u2014 before US volume gets real, an hour with an actual cross-border privacy lawyer is the cheapest insurance you'll buy.)*\n"}], "grading": null}, {"id": "eval-1-canada-vs-us-launch-without_skill", "prompt": "the team's verdict on launching in canada first vs US \u2014 our pricing is USD but we're in BC", "eval_id": 1, "outputs": [{"name": "response.md", "type": "text", "content": "# Launch Canada First vs. US First \u2014 The Team's Verdict\n\n**Short answer: Launch Canada first.** Specifically, launch in BC/Canada as your beachhead, keep your pricing in USD, and treat the US as a fast-follow once you've proven the product works with real grieving families. The \"we're in BC but pricing is USD\" tension is real but it's a minor operational wrinkle, not a strategic blocker \u2014 and it actually argues *for* Canada-first, not against it.\n\nHere's the full reasoning.\n\n---\n\n## The core recommendation: Canada-first beachhead\n\nFor a sensitive, trust-heavy product aimed at seniors and bereaved families, your scarcest resource isn't market size \u2014 it's **proof that the experience is emotionally and operationally safe**. You cannot afford a botched \"delivered after passing\" flow or a privacy incident in front of a large audience. That makes a smaller, closer, more controllable first market the right call.\n\nCanada-first gives you:\n\n- **Proximity to your users.** You're in BC. You can sit with early customers, attend a death-care or seniors' community event, do in-person onboarding, and watch real people use the after-passing flow. That qualitative signal is worth more right now than scale.\n- **A regulatory environment you already live in.** You're building under PIPEDA and BC's privacy regime by default. Proving compliance at home first is far cheaper than launching into the US patchwork of 20+ state privacy laws (CCPA/CPRA and others) cold.\n- **Capital efficiency.** Canadian-first is the textbook \"build in Canada, sell into the US later\" playbook. It lets you validate before you spend on US CAC, which is materially higher.\n- **A clean data-residency story.** A digital-legacy product storing copies of wills, IDs, and final messages is exactly the kind of data where \"your family's memories stay in Canada\" is a *feature*, not a constraint. More on this below.\n\nThe standard caution \u2014 \"Canada is ~1/10th the US market\" \u2014 is true and matters for your eventual fundraise and TAM story. But it's an argument about *where you scale*, not *where you start*. You start where you can learn fastest and break things most safely. That's home.\n\n---\n\n## The USD pricing question \u2014 keep it, and here's why it's fine\n\nYou flagged the apparent mismatch: company in BC, prices in USD. This is genuinely not a problem.\n\n1. **The app stores handle the currency conversion for you.** Apple and Google let you set a base price (yours in USD) and auto-convert it into each storefront's local currency. A Canadian buyer sees a CAD price; a US buyer sees USD. You don't have to run dual price lists. Apple now also lets you *lock* local pricing in markets you know well, so if you want a clean, round CAD number for Canadian buyers (e.g. CAD $12.99 instead of an ugly auto-converted $13.41), you can pin it manually.\n\n2. **USD as your base currency is the right long-term choice.** It keeps your pricing, your eventual US expansion, and your investor metrics (ARR, ARPU) in the currency the market and your future funders speak. Setting your \"spine\" in USD now saves you a re-pricing exercise later.\n\n3. **The one thing to get right: what Canadian buyers actually see.** Don't show seniors a raw FX-converted USD number that drifts with the exchange rate. Seniors are price- and trust-sensitive; a price that looks \"off\" or changes month to month erodes confidence. Set a deliberate, stable CAD price point for the Canadian storefront and a USD one for the US. Same product, two clean numbers.\n\n**Net:** USD base price + locked, sensible local currency display per storefront. The BC/USD tension disappears the moment you let the storefronts localize.\n\n---\n\n## The data-residency angle \u2014 your strongest reason to start in Canada\n\nThis is the point the team should weigh most heavily, because it's specific to *your* product, not generic startup advice.\n\nYou're storing wills, document copies, IDs, and after-death messages. For Canadian families, the fact that this data can be subject to the US **CLOUD Act** if stored on US infrastructure is a real, marketable concern. Launching Canada-first lets you:\n\n- Host in a Canadian region and make **\"your family's legacy stays in Canada\"** an explicit trust promise.\n- Build your consent and deletion flows to PIPEDA from day one, then layer CCPA/CPRA requirements when you cross the border \u2014 rather than retrofitting.\n- Get ahead of a known gap: PIPEDA doesn't cleanly address how *executors and beneficiaries* access a deceased person's data. That's the heart of your product. Solving it well in one jurisdiction first, with Canadian estate-law input, de-risks the whole model before you multiply the legal complexity by 50 US states.\n\nA privacy or estate-access failure in this category isn't a churned customer \u2014 it's a breach of a promise made to someone who has just lost a parent. Do that learning at home, at small scale, where you can fix it fast.\n\n---\n\n## Recommended sequencing\n\n1. **Phase 1 \u2014 BC / Canada beachhead (now).** Launch in the Canadian storefronts. USD base price, stable CAD display. Host data in Canada. Lead marketing with the data-residency and \"made-in-Canada\" trust story. Goal: prove the full lifecycle, especially the after-passing delivery and executor-access flows, with real families.\n2. **Phase 2 \u2014 Validate the hard parts.** Specifically pressure-test: a real after-death delivery, an executor retrieving documents, and a recipient (your `recipient`/`both` account flow) receiving memories. These are the moments your reputation lives or dies on.\n3. **Phase 3 \u2014 US fast-follow.** Once the lifecycle is proven and you have a handful of real after-passing case studies, flip on the US storefronts (your USD pricing is already in place) and layer in CCPA/CPRA compliance and US-region hosting. The US is where the scale and the eventual venture story live \u2014 enter it *after* the product has earned trust, not before.\n\n---\n\n## Bottom line for the team\n\n- **Launch Canada/BC first** \u2014 it's the safest place to prove a trust-critical product, it's where you are, and it gives you a differentiated data-residency story you literally cannot get launching US-first.\n- **Keep pricing in USD as your base**, and let each app storefront display a stable local currency (clean CAD for Canada). The BC-vs-USD mismatch is a 30-minute App Store Connect / Play Console configuration, not a strategic dilemma.\n- **Don't let \"the US is 10x bigger\" rush you across the border early.** That's the right reason to plan a US fast-follow \u2014 it's the wrong reason to launch there cold with an unproven after-death flow.\n\nWin the kitchen tables in BC first. The US is a configuration toggle and a compliance sprint away once you've earned the right to scale.\n\n---\n\n### Sources\n\n- [App Store pricing and availability \u2014 Apple Developer](https://developer.apple.com/help/app-store-connect/reference/pricing-and-availability/app-store-pricing-and-availability-start-times-by-country-or-region/)\n- [App Price Localization Cheat Sheet (190+ Countries) \u2014 PricePush](https://pricepush.app/blog/app-price-localization-cheat-sheet)\n- [App Store Pricing System update: 700 new price points \u2014 RevenueCat](https://www.revenuecat.com/blog/growth/app-store-pricing-system-november-changes/)\n- [Canada vs USA for Business Expansion \u2014 Teamed](https://www.teamed.global/insights/canada-vs-usa-for-business-which-country-should-you-expand-to-first)\n- [Canadian vs US Startup Ecosystems 2026 \u2014 Shoutex](https://shoutex.com/blog/canadian-vs-us-startup-ecosystems)\n- [Canadian Data Residency and the Public Cloud \u2014 Pilotcore](https://pilotcore.io/blog/canadian-data-residency-and-the-public-cloud)\n- [PIPEDA vs CCPA: Major Differences \u2014 Captain Compliance](https://captaincompliance.com/education/pipeda-vs-ccpa/)\n- [US State Privacy Laws Comparison (2026) \u2014 Recording Law](https://www.recordinglaw.com/us-laws/data-privacy-laws/us-state-privacy-laws-comparison/)\n- [Estates Law and Privacy Law: An Incomplete Intersection \u2014 All About Estates](https://www.allaboutestates.ca/estates-law-privacy-law-incomplete-intersection-part/)\n"}], "grading": null}, {"id": "eval-2-checkin-privacy-with_skill", "prompt": "A team thoughts \u2014 a tester's daughter asked if we can notify family when mom's check-in streak breaks, even before full escalation. privacy issue?", "eval_id": 2, "outputs": [{"name": "response.md", "type": "text", "content": "A tester's daughter wants an early-warning ping when Mom's check-in streak breaks \u2014 before the full \"are you okay / escalate\" flow kicks in. Good instinct, real demand, but this is a consent question wearing a convenience costume. Convening the panel.\n\n**The Estate Lawyer says: the consenting party is Mom, not her daughter.** A streak break is health-adjacent information \u2014 \"we haven't heard from this 78-year-old in 4 days\" is a statement about her wellbeing, and shipping it to a third party without her explicit opt-in is exactly the disclosure a plaintiff's lawyer circles. The daughter asking is not consent; the *account holder* must have agreed, in advance, that this specific person gets this specific signal. Build it as Mom granting \"let my daughter see when I miss check-ins,\" never as the daughter subscribing to surveillance of her mother.\n\n**The Customer Psychologist says: the unspoken fear here is being watched, not being helped.** Seniors guard their independence harder than almost anything \u2014 the daughter reads a missed streak as \"is she okay?\", but Mom may read an early alert as \"my kids are monitoring whether I'm slipping.\" If the notification lands as a tattle (\"Mom missed 2 days\"), it breeds the exact resentment that makes seniors abandon the app. Framing decides everything: \"Mom hasn't checked in lately \u2014 you might give her a call\" invites warmth; a streak-broken counter invites a fight at Thanksgiving.\n\n**The Product Advisor says: count the states, because \"streak broke\" isn't one event.** There's *forgot to tap* (most common, totally benign), *phone died / traveling*, and *actually unwell* \u2014 and an early notification can't tell them apart, so it will cry wolf constantly. The silent-failure risk runs the other way too: a daughter who gets a \"she's fine, just missed a day\" ping ten times will mute it, and then ignore the eleventh that mattered. If you notify on every break, you train people to dismiss the signal before real escalation ever fires.\n\n**The Engineer says: this is a new recipient on existing plumbing, not a new feature.** The check-in/escalation logic already tracks streaks and already has an escalation contact list \u2014 adding \"notify on first miss\" is a threshold and a new permission row, not a rebuild. But the honest data model needs three flags Mom controls: *who* may see her check-in status, *at what threshold* (1 miss vs. the existing escalation window), and an audit trail of consent. Don't overload the existing emergency-contact relationship to mean two different things; \"person I trust in a crisis\" and \"person who sees my daily streak\" are not the same grant.\n\n**Verdict:** Yes, but build it as Mom's opt-in, not the daughter's request \u2014 privacy is fine *if and only if* the senior explicitly chose to share her check-in status with a named person. Ship it gated: a setting Mom turns on (\"Let [name] know if I miss my check-ins\"), with the early ping worded as a gentle nudge to reach out (\"haven't heard from Mom \u2014 give her a call\"), never as a status report or a streak scoreboard. Keep it strictly below the existing escalation tier so it doesn't muddy the real \"something's wrong\" alarm, and default it OFF. This is a clean candidate to test with the 10 seniors before polishing: do they feel cared-for or surveilled when they hear the feature described in their own words on a phone call? Their reaction, not ours, settles the framing.\n\nOne to sleep on: if Mom never turns it on, the daughter who asked will assume it's working and feel falsely reassured \u2014 is a silent, un-opted-in feature worse than no feature, because it quietly promises a safety net that isn't there?\n"}], "grading": null}, {"id": "eval-2-checkin-privacy-without_skill", "prompt": "A team thoughts \u2014 a tester's daughter asked if we can notify family when mom's check-in streak breaks, even before full escalation. privacy issue?", "eval_id": 2, "outputs": [{"name": "response.md", "type": "text", "content": "# Early Check-In Notifications: Privacy Read & Recommendation\n\n**Short version:** This is a great instinct from the daughter, and it's buildable \u2014 but yes, there's a real privacy issue. The good news is it's solvable with consent design, not a hard \"no.\" The key is that a *broken streak* is health-adjacent information about the senior, and the senior \u2014 not the family \u2014 owns the decision about who sees it.\n\n---\n\n## Why this is a privacy issue (and not just a feature flag)\n\nFull escalation is easy to justify: a missed check-in after a defined window implies a possible emergency, and contacting a trusted contact is the literal point of the feature. The senior signed up for exactly that.\n\nAn *early* \"streak broke\" notification is different in three ways:\n\n1. **It's not an emergency signal.** A broken streak usually means mom was on vacation, slept in, had a bad phone day, or just didn't feel like tapping the button. Surfacing that to family turns a low-signal event into a \"is mom okay??\" phone call. We'd be manufacturing anxiety from noise.\n\n2. **It reveals behavioral/health-adjacent data.** Check-in patterns are a proxy for routine, cognition, and wellbeing. \"Mom's streak keeps breaking\" can read as \"mom is declining.\" That's sensitive information about the senior, shared without an emergency to justify it.\n\n3. **The requester is the family member, not the user.** The daughter is asking for visibility into her mom's behavior. Mom is our user. We can't let a recipient's desire for reassurance override the senior's autonomy \u2014 that's the exact dynamic (well-meaning family surveillance) that makes seniors distrust monitoring apps.\n\nThe legal frame underneath this: depending on how we position the app, check-in data may be treated as health-adjacent under GDPR (special-category-ish) and various US state privacy laws. Even where it's not strictly regulated, the *expectation* a senior has when they sign up matters a lot for trust and for any privacy claims we make.\n\n---\n\n## The principle that resolves it\n\n**The senior controls who sees their check-in status, and at what threshold \u2014 opt-in, granular, and revocable.**\n\nIf mom explicitly says \"let my daughter see when I miss a day,\" that's not surveillance, it's her choice. The privacy problem only exists when we make that decision *for* her or default it on.\n\n---\n\n## Recommended design\n\n**1. Off by default. Senior opts in.**\nAdd a setting (warm modal, per our scheme) where the senior chooses, per contact, what that person can see:\n- Nothing before full escalation (current behavior \u2014 keep as default)\n- \"Notify when I miss a check-in\" (the daughter's request)\n- Maybe a middle tier later (e.g., notify after 2 misses)\n\n**2. Per-contact, not all-or-nothing.**\nMom might want her daughter to get early notices but not her brother. Granularity here is the whole ballgame for trust.\n\n**3. Transparency to the senior.**\nWhen mom enables this, she sees plainly: \"Sarah will get a text if you miss a check-in.\" And ideally she can see a log of what was sent. No silent monitoring.\n\n**4. Soft, non-alarming language in the notification.**\nNot \"ALERT: Mom missed her check-in.\" Instead: \"Just a heads-up \u2014 your mom hasn't checked in today. This usually isn't an emergency.\" Frame it as a gentle nudge to maybe call her, not a crisis.\n\n**5. Easy revocation.**\nMom can turn it off any time, and the app should never make her feel guilty or trapped for doing so.\n\n**6. Let the senior trigger it the other way too (nice-to-have).**\nSome seniors would happily let family see a green \"checked in today\" status. A positive-status share is far lower-risk than a missed-check-in alert and might satisfy a lot of the same family reassurance need without surfacing the negative signal.\n\n---\n\n## What I'd avoid\n\n- **Defaulting it on, or burying consent in onboarding.** That converts a thoughtful feature into a surveillance default and a privacy complaint.\n- **Letting the family member enable it from their side.** The toggle must live with the senior. If a recipient requests it, the right flow is \"we'll ask your mom if she'd like to share that\" \u2014 never auto-grant.\n- **Treating missed = problem.** Build in tolerance (grace windows, \"I'm away\" mode) so we're not crying wolf and eroding trust in the real escalation.\n\n---\n\n## Suggested answer to the daughter\n\n> \"Yes \u2014 and we want mom to be in control of it. We're adding a setting where she can choose to let you get a gentle heads-up if she misses a check-in, before anything escalates. It's her decision to turn on, and she can pick exactly who gets those notices. That keeps it her choice rather than something happening behind her back.\"\n\nThat answer says yes to the need, respects the senior, and is honest about why we're doing it the way we are. It also tends to *increase* trust with both the daughter and mom, because it signals we won't surveil their parent without consent.\n\n---\n\n## One thing to validate\n\nBefore building, I'd test the framing with a few senior users directly \u2014 not just the daughters. Ask: \"Would you want your daughter to know if you skipped a check-in?\" The split in those answers will tell you whether this should ever even be offered, and how strongly to word the warnings. Recipients will almost always say yes to more visibility; the seniors' answers are the ones that should drive the design.\n"}], "grading": null}], "previous_feedback": {}, "previous_outputs": {}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

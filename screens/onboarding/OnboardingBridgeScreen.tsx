@@ -178,7 +178,7 @@ export default function OnboardingBridgeScreen() {
           name,
           email,
           phone,
-          relationship:       relationship.toLowerCase(),
+          relationship:       relationship,   // canonical capitalized label — must match FamilyScreen RELATIONSHIPS pills
           relationship_label: relationship,
           is_trusted_contact: false,
         })
@@ -436,7 +436,7 @@ export default function OnboardingBridgeScreen() {
               )}
 
               {/* Relationship pills */}
-              <Text style={labelStyle}>What's your relationship?</Text>
+              <Text style={labelStyle}>Who is this person to you?</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
                 {RELATIONSHIPS.map(r => {
                   const active = relationship === r.label
