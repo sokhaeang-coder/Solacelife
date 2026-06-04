@@ -23,7 +23,8 @@
         "NSPhotoLibraryUsageDescription": "Solace Life accesses your photo library so you can choose photos and videos to save as memories.",
         "NSPhotoLibraryAddUsageDescription": "Solace Life saves received photo memories to your camera roll.",
         "NSSpeechRecognitionUsageDescription": "Solace Life uses speech recognition so you can speak your stories and memories instead of typing.",
-        "NSContactsUsageDescription": "Solace Life accesses your contacts so you can quickly add family members without typing."
+        "NSContactsUsageDescription": "Solace Life accesses your contacts so you can quickly add family members without typing.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -44,7 +45,10 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CONTACTS",
         "android.permission.WRITE_CONTACTS",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_AUDIO"
       ],
       "package": "com.sokhaeang.SolaceLife"
     },
@@ -82,7 +86,6 @@
         }
       ],
       "expo-localization",
-      "@sentry/react-native",
       "@react-native-community/datetimepicker",
       "expo-font"
     ],
