@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solace Life — Resident Pilot Program for Care Homes</title>
+<meta name="description" content="A free, founder-led memory preservation pilot for your residents. Vetted, supervised, no cost, no sales. Vancouver, BC.">
+<style>
+  :root{
+    --espresso:#4A2418; --sienna:#8A5A3A; --accent:#E8763A; --pink:#F06292;
+    --accent-bg:rgba(232,118,58,.08); --cream:#FFF8F2; --ink:#4A2418;
+    --glass:rgba(255,255,255,.72); --glass-border:rgba(255,255,255,.85);
+    --glass-shadow:0 18px 50px rgba(74,36,24,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--cream);line-height:1.6}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  /* HERO */
+  .hero{background:linear-gradient(160deg,#FFE3D0 0%,#FFD2CE 45%,#F8C4D8 100%);padding:64px 0 56px;text-align:center}
+  .hero .brand{font-size:15px;font-weight:700;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:18px}
+  .hero h1{font-size:clamp(30px,5vw,44px);color:var(--espresso);line-height:1.2;margin-bottom:18px;font-weight:800}
+  .hero p.sub{font-size:clamp(17px,2.4vw,21px);color:var(--sienna);max-width:640px;margin:0 auto 30px}
+  .cta{display:inline-block;background:linear-gradient(90deg,#F06292,#F48A5A,#FFD07A);color:#4A2418;font-size:18px;font-weight:700;padding:16px 34px;border-radius:18px;text-decoration:none;box-shadow:0 10px 30px rgba(244,138,90,.5)}
+  .cta.secondary{background:rgba(255,255,255,.72);color:var(--espresso);box-shadow:none;border:1.5px solid rgba(255,255,255,.85);margin-left:10px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+  .hero .note{font-size:14px;color:var(--sienna);margin-top:14px}
+  /* TRUST STRIP */
+  .trust{background:linear-gradient(180deg,#3A2113,#2B1A10);color:#F5CEAA;padding:18px 0}
+  .trust .wrap{display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:center;font-size:16px}
+  .trust span{white-space:nowrap}
+  .trust b{color:#FFD07A}
+  /* SECTIONS */
+  section{padding:52px 0}
+  h2{font-size:clamp(24px,3.4vw,30px);color:var(--espresso);margin-bottom:10px;font-weight:800}
+  .lead{font-size:17.5px;color:var(--sienna);max-width:680px;margin-bottom:28px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--glass-border);border-radius:26px;padding:22px;box-shadow:var(--glass-shadow)}
+  .card .ico{font-size:30px;margin-bottom:8px}
+  .card h3{font-size:17px;color:var(--espresso);margin-bottom:6px}
+  .card p{font-size:15px;color:var(--sienna)}
+  /* SAFEGUARDS */
+  .safe{background:var(--accent-bg)}
+  .safe-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:8px}
+  .safe-item{background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:26px;padding:14px 18px;display:flex;gap:12px;align-items:flex-start;border:1px solid var(--glass-border);box-shadow:var(--glass-shadow)}
+  .safe-item .tick{color:#2E7D6E;font-weight:800;font-size:18px;flex-shrink:0}
+  .safe-item p{font-size:15px;color:var(--sienna)}
+  .safe-item b{color:var(--espresso)}
+  /* FOUNDER */
+  .founder{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+  .founder .photo{width:120px;height:120px;border-radius:60px;background:linear-gradient(160deg,#F8C4D8,#FFD2CE);display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--espresso);font-weight:800;flex-shrink:0}
+  .founder .creds{flex:1;min-width:280px}
+  .cred{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+  .cred .badge{font-size:20px;flex-shrink:0}
+  .cred p{font-size:15px;color:var(--sienna)}
+  .cred b{color:var(--espresso)}
+  /* STEPS */
+  .steps{counter-reset:step}
+  .step{display:flex;gap:16px;margin-bottom:18px;align-items:flex-start}
+  .step .n{counter-increment:step;background:linear-gradient(90deg,#F06292,#F48A5A);color:#fff;font-weight:800;width:34px;height:34px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+  .step .n::before{content:counter(step)}
+  .step p{font-size:16px;padding-top:4px;color:var(--sienna)}
+  .step b{color:var(--espresso)}
+  /* FAQ */
+  details{background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--glass-border);border-radius:26px;padding:16px 20px;margin-bottom:10px;box-shadow:var(--glass-shadow)}
+  summary{font-weight:700;color:var(--espresso);cursor:pointer;font-size:16px}
+  details p{margin-top:10px;font-size:15px;color:var(--sienna)}
+  /* FINAL CTA */
+  .final{background:linear-gradient(160deg,#FFE3D0,#FFD2CE 45%,#F8C4D8);text-align:center}
+  .final p{max-width:560px;margin:0 auto 26px;color:var(--sienna);font-size:17px}
+  footer{background:linear-gradient(180deg,#3A2113,#2B1A10);color:#F5CEAA;text-align:center;padding:26px 18px;font-size:13.5px;line-height:1.7}
+  footer a{color:#FFD07A;text-decoration:none}
+  @media (max-width:560px){ .cta.secondary{margin-left:0;margin-top:10px} }
+  /* Print: directors print things for morning huddles */
+  @media print{
+    body{background:#fff}
+    .hero,.final{background:#fff;padding:24px 0}
+    .trust{background:#fff;color:var(--espresso);border-top:2px solid var(--espresso);border-bottom:2px solid var(--espresso)}
+    .trust b{color:var(--espresso)}
+    .cta{display:none}
+    .hero .note::after{content:"  ·  sokhaeang@gmail.com  ·  604-816-1877  ·  solacelife.ca/care-homes";font-weight:700}
+    details{page-break-inside:avoid}
+    details[open] summary~*{display:block}
+    section{padding:20px 0}
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="wrap">
+    <div class="brand">Solace Life · Vancouver, BC</div>
+    <h1>Your residents' stories deserve to outlive them.<br>Help us make sure they do.</h1>
+    <p class="sub">Solace Life helps seniors record their voice, their memories, and their love — delivered to family on birthdays, anniversaries, and the moments after they're gone. We're inviting a small number of BC care homes into our founding resident pilot.</p>
+    <a class="cta" href="mailto:sokhaeang@gmail.com?subject=Solace%20Life%20Resident%20Pilot%20—%20[Facility%20Name]&body=Hi%20Sokha%2C%0A%0AWe'd%20like%20to%20learn%20more%20about%20the%20resident%20pilot.%0A%0AFacility%3A%0AContact%20name%20%26%20role%3A%0APhone%3A%0ABest%20time%20to%20reach%20us%3A">Request the Pilot Package</a>
+    <a class="cta secondary" href="tel:+16048161877">Call Sokha: 604-816-1877</a>
+    <div class="note">Free for residents · No sales conversations · Founder-led · Fully supervised</div>
+  </div>
+</div>
+
+<!-- TRUST STRIP -->
+<div class="trust">
+  <div class="wrap">
+    <span><b>✓</b> BCFSA-licensed professional</span>
+    <span><b>✓</b> RCMP-screened — continuous monitoring</span>
+    <span><b>✓</b> Search &amp; Rescue volunteer</span>
+    <span><b>✓</b> CRRP screening — consent ready</span>
+    <span><b>✓</b> Clean criminal record</span>
+  </div>
+</div>
+
+<!-- WHY -->
+<section>
+  <div class="wrap">
+    <h2>Why families will thank you for this</h2>
+    <p class="lead">Every care home knows the moment: a family sits in your lobby after a loss, wishing they had one more recording of Mom's voice. Solace Life exists so that moment goes differently.</p>
+    <div class="cards">
+      <div class="card"><div class="ico">🎙️</div><h3>Their voice, kept</h3><p>Residents record voice and video messages in minutes — a story, a recipe, the way they laugh.</p></div>
+      <div class="card"><div class="ico">📅</div><h3>Delivered on the days that matter</h3><p>Messages arrive on a granddaughter's wedding day, a son's 50th birthday — for years to come.</p></div>
+      <div class="card"><div class="ico">🔐</div><h3>One organised place for family</h3><p>An optional vault keeps copies of important information where family can find it — shared only with people the resident chooses.</p></div>
+      <div class="card"><div class="ico">👨‍👩‍👧</div><h3>Built for this generation</h3><p>Big buttons, plain words, clinical-language review behind every screen. Designed with seniors, not just for them.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SAFEGUARDS -->
+<section class="safe">
+  <div class="wrap">
+    <h2>The safeguards, before you ask</h2>
+    <p class="lead">You protect vulnerable people for a living. So does this pilot.</p>
+    <div class="safe-list">
+      <div class="safe-item"><span class="tick">✓</span><p><b>Common areas only.</b> Every session happens where your staff can see it — and staff are encouraged to sit in.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>Family informed first.</b> A family member of each resident is notified and invited before any session.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>Zero money, ever.</b> The pilot is free. No payment details are collected, and there is no sales conversation — during or after.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>No passwords needed.</b> Recording memories requires no sensitive information. The vault is optional and never demonstrated unsolicited.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>Written consent.</b> Plain-language consent signed by the resident, copied to family, acknowledged by your staff.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>Delete anything, anytime.</b> A resident can stop and erase everything in one request — we show them and your staff how.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>BC PIPA / PIPEDA handling.</b> Per-account data isolation, device-side encryption for sensitive fields, no advertising, no data sales.</p></div>
+      <div class="safe-item"><span class="tick">✓</span><p><b>Not a will — by design.</b> Solace Life shares copies of information only. It transfers no money, property, or belongings, and our terms say so in writing.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOUNDER -->
+<section>
+  <div class="wrap">
+    <h2>Who you'd be letting in the door</h2>
+    <p class="lead">Not a startup sales team. One founder, vetted three different ways, who built this for his own family first.</p>
+    <div class="founder">
+      <div class="photo">SE</div>
+      <div class="creds">
+        <p style="font-size:18px;margin-bottom:14px"><b style="color:var(--espresso)">Sokha Eang</b> — Founder, Solace Life · Vancouver, BC</p>
+        <div class="cred"><span class="badge">🏛️</span><p><b>Licensed real estate professional (BCFSA)</b> — criminal record check and ongoing good-conduct obligations under a public regulator.</p></div>
+        <div class="cred"><span class="badge">👮</span><p><b>RCMP-screened, continuous-eligibility monitoring</b> — federal licensing that automatically re-checks against police databases on an ongoing basis, not a one-time check.</p></div>
+        <div class="cred"><span class="badge">⛑️</span><p><b>South Fraser Search &amp; Rescue volunteer</b> — current RCMP record check; trained in supporting people in distress.</p></div>
+        <div class="cred"><span class="badge">📋</span><p><b>CRRP vulnerable-adults screening</b> — consent prepared; ready to complete your facility's screening immediately upon invitation.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section style="background:rgba(255,255,255,.6)">
+  <div class="wrap">
+    <h2>How the pilot works</h2>
+    <p class="lead">Two weeks, a handful of interested residents, and one goal: learn what's confusing so the product serves this generation properly.</p>
+    <div class="steps">
+      <div class="step"><div class="n"></div><p><b>A 15-minute conversation</b> with you — by phone or in person. You see the full pilot package: trust profile, consent forms, data protections.</p></div>
+      <div class="step"><div class="n"></div><p><b>Your screening, your rules.</b> We complete your facility's CRRP check and any additional requirements before meeting a single resident.</p></div>
+      <div class="step"><div class="n"></div><p><b>Interested residents opt in</b> with written consent, family informed. Typically 3–10 residents; you choose the setting and schedule.</p></div>
+      <div class="step"><div class="n"></div><p><b>Two weeks of gentle use</b> — record a memory, maybe invite a family member. Week two: short, friendly conversations about what worked.</p></div>
+      <div class="step"><div class="n"></div><p><b>You get the findings.</b> What residents loved, what confused them, and what we changed because of it. If it's valuable, we talk next steps. If not, we thank you and leave quietly.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="wrap">
+    <h2>Questions directors ask us</h2>
+    <details><summary>What does this cost the facility or residents?</summary><p>Nothing. The pilot is free, no payment information is collected, and there is no obligation for residents, families, or the facility — during the pilot or after it.</p></details>
+    <details><summary>Is this a sales program aimed at our residents?</summary><p>No. No prices are shown or discussed with residents, and there is no follow-up sales contact. The pilot exists to make the product better for this generation — that's the entire transaction.</p></details>
+    <details><summary>What happens to a resident's recordings if they stop?</summary><p>Whatever they choose. They can keep their account, hand it to family, or ask us to delete everything — which we do immediately and confirm in writing.</p></details>
+    <details><summary>Do residents need to share passwords or financial information?</summary><p>No. Recording and sending memories requires none of that. The app does include an optional vault feature, but it is never demonstrated unsolicited and is not part of the pilot's asks.</p></details>
+    <details><summary>What if a resident passes away during or after the pilot?</summary><p>Their recordings are preserved and released only to the family members they chose. The release process relies on the resident's designated trusted contacts confirming the passing — Solace Life does not independently verify death. Solace Life shares copies of information only — it is not a will and transfers no assets.</p></details>
+    <details><summary>Can our staff observe sessions?</summary><p>We'd be disappointed if they didn't. All sessions are in common areas and staff are welcome at every one.</p></details>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final">
+  <div class="wrap">
+    <h2>Five care homes. That's the founding cohort.</h2>
+    <p>We're keeping the pilot small enough that the founder personally runs every session. If preserving your residents' stories sounds like something your families would value, let's have the 15-minute conversation.</p>
+    <a class="cta" href="mailto:sokhaeang@gmail.com?subject=Solace%20Life%20Resident%20Pilot%20—%20[Facility%20Name]&body=Hi%20Sokha%2C%0A%0AWe'd%20like%20to%20learn%20more%20about%20the%20resident%20pilot.%0A%0AFacility%3A%0AContact%20name%20%26%20role%3A%0APhone%3A%0ABest%20time%20to%20reach%20us%3A">Request the Pilot Package</a>
+    <a class="cta secondary" href="tel:+16048161877">604-816-1877</a>
+  </div>
+</section>
+
+<footer>
+  Solace Life · Vancouver, British Columbia · <a href="https://solacelife.ca">solacelife.ca</a><br>
+  Solace Life shares copies of documents and information only. It does not transfer ownership of money, property, or belongings, and it is not a legal will.<br>
+  © 2026 Solace Life. All rights reserved.
+</footer>
+
+</body>
+</html>
