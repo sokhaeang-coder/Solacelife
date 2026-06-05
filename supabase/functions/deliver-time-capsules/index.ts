@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
         id,
         name,
         email,
-        consent_status
+        consent_status,
+        recipient_profile_id
       )
     `)
     .eq('status', 'pending')
@@ -90,7 +91,7 @@ Deno.serve(async (req) => {
     // Look up the sender's profile separately (no direct FK to profiles)
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('full_name, push_token')
       .eq('id', delivery.user_id)
       .single()
 
@@ -166,6 +167,35 @@ Deno.serve(async (req) => {
 
       console.log(`Delivered: ${delivery.id} → ${recipientEmail}`)
       results.push({ id: delivery.id, status: 'delivered', to: recipientEmail })
+
+      // ── 4. Push notification — when the recipient has the app ────────
+      // Linked recipients (family_members.recipient_profile_id) with a
+      // registered device get an iOS/Android banner in addition to email.
+      const recipientProfileId = recipient?.recipient_profile_id
+      if (recipientProfileId) {
+        const { data: rp } = await supabase
+          .from('profiles')
+          .select('push_token')
+          .eq('id', recipientProfileId)
+          .single()
+        if (rp?.push_token) {
+          await sendExpoPush(
+            rp.push_token,
+            `💌 A moment from ${senderName} has arrived`,
+            `"${memoryTitle}" is waiting for you in Solace Life.`,
+          )
+          console.log(`Push notification sent for delivery ${delivery.id}`)
+        }
+      }
+
+      // ── 5. Closure push to the SENDER — the product working out loud ──
+      if (profileData?.push_token) {
+        await sendExpoPush(
+          profileData.push_token,
+          `💛 Delivered`,
+          `Your moment "${memoryTitle}" reached ${recipientName} today — right on time.`,
+        )
+      }
     } else {
       const errText = await emailRes.text()
       console.error(`Email failed for ${delivery.id}:`, errText)
@@ -335,4 +365,27 @@ function buildEmailHtml({
     bodyHtml,
     footerText: 'You received this because a loved one chose to share a memory with you.',
   })
+}
+
+// ── Expo push helper — same pattern as send-checkin-reminder ──────────────
+async function sendExpoPush(token: string, title: string, body: string): Promise<void> {
+  const response = await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      to: token,
+      title,
+      body,
+      sound: 'default',
+      priority: 'high', // an arriving moment is the product's peak event
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    console.error(`Expo push failed for token ${token}:`, text)
+  }
 }

@@ -114,6 +114,23 @@ Deno.serve(async (req) => {
 
     console.log(`Emergency consent accepted: ${member.email} (${member.name})`)
 
+    // ── Consent celebration — tell the owner their person said yes ──
+    // A love event per the notification doctrine: send immediately.
+    if (member.user_id) {
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('push_token')
+        .eq('id', member.user_id)
+        .single()
+      if (ownerProfile?.push_token) {
+        await sendExpoPush(
+          ownerProfile.push_token,
+          `💛 ${member.name} said yes`,
+          `They've accepted being your trusted contact. Your circle just got stronger.`,
+        )
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, action: 'accept', name: member.name, senderName }),
       { status: 200, headers }
@@ -159,3 +176,15 @@ Deno.serve(async (req) => {
     { status: 200, headers }
   )
 })
+
+// ── Expo push helper ───────────────────────────────────────────────────────
+async function sendExpoPush(token: string, title: string, body: string): Promise<void> {
+  const response = await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ to: token, title, body, sound: 'default' }),
+  })
+  if (!response.ok) {
+    console.error('Expo push failed:', await response.text())
+  }
+}

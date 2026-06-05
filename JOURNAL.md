@@ -1226,3 +1226,11 @@ The full Solace Life concept was articulated for the first time:
 | **Stripe live-mode switch** | Entire Stripe setup (product, $99/yr USD+CAD prices, payment links, price-ID secrets) currently in TEST mode — intentional for beta, no real charges possible. Before GA: toggle dashboard to live mode, recreate product/prices/links, re-set supabase secrets, re-patch landing page links, redeploy checkout functions. | Before App Store GA / first real sale |
 | **25-year retention doctrine** (A-team verdict, Jun 5) | Keep the 25+ year promise — storage cost is trivial (10GB hot for 25 yrs ≈ $63; deep-archive ≈ $0.50). Doctrine: UNDELIVERED capsules pinned hot forever (auto-rehydrate before delivery date); delivered/static content cold-eligible (R2/Glacier) with 48-hr retrieval; annual format-refresh job; split TOS promises: deliveries always fire vs archive available within 48h. | Post-beta, at ~1,000 accounts |
 | **Recipient email continuity system** | Three doors: (1) sender edits member email — exists; (2) linked recipients: DB trigger propagates account-email changes to their family_members rows; (3) unlinked recipients: token-secured "update my contact details" footer link in every delivery email — new address must verify, old address + living sender notified (anti-hijack). Plus biennial one-tap "still your best address?" nudge for future-dated capsule recipients. | Build (2) post-beta; (3) before GA |
+
+## Notification Doctrine (June 5, 2026)
+
+Four rules: (1) Safety always wins — check-ins/emergency send whenever needed. (2) Love events — moment arrived (G2), delivered-confirmation (G1), consent accepted — send immediately; they ARE the product. (3) Setup nudges fire exactly ONCE each, ever. (4) Everything else doesn't exist: no streaks, no "we miss you," no marketing, max one non-safety notification per week, sends 9am–8pm local only, every notification deep-links to its screen.
+
+Live: check-in reminders, occasion nudges, emergency card, moment-arrived push, delivered-confirmation push.
+Building: consent-celebration push; one-shot setup nudges (first moment day 2, first family day 3, trusted contact day 5).
+Post-beta: anniversary echoes ("One year ago you recorded...").
