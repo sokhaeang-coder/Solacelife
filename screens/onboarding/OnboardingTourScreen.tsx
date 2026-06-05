@@ -229,7 +229,28 @@ export default function OnboardingTourScreen({ navigation }: any) {
             </View>
           </Animated.View>
 
-          {/* ── Card 3: Invitation + rose bokeh orbs ── */}
+          {/* ── Card 3: Your first contact — the founder ── */}
+          <Animated.View style={[{ marginBottom: 14 }, animStyle(anim2)]}>
+            <View style={{
+              borderRadius: 18,
+              borderWidth: 1,
+              borderColor: WM.border,
+              backgroundColor: WM.cardBg,
+              overflow: 'hidden',
+            }}>
+              <View style={{ height: 4, backgroundColor: '#F06292' }} />
+              <View style={{ padding: 16 }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#C2395A', marginBottom: 6 }}>
+                  👋  You won't start alone
+                </Text>
+                <Text style={{ fontSize: 13, color: WM.sub, lineHeight: 21 }}>
+                  When you open your Family page, one friendly face is already there: Sokha, the founder of Solace Life. He's your first point of support while you find your feet — questions, ideas, or just to say hello.{'\n\n'}This is your space. He can't see anything you save unless you choose to send it to him, and you can remove him anytime — no hard feelings.
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* ── Card 4: Invitation + rose bokeh orbs ── */}
           <Animated.View style={[{ marginBottom: 8 }, animStyle(anim2)]}>
             <LinearGradient
               colors={['rgba(240,98,146,0.12)', 'rgba(255,176,80,0.10)']}
