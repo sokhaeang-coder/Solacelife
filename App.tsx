@@ -211,7 +211,7 @@ function MainTabs() {
   const { hasUnread } = useUnreadMoments()
   return (
     <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: [s.tabBar, { height: tabBarHeight }],
-      tabBarActiveTintColor: C.accent, tabBarInactiveTintColor: C.greyDim }}>
+      tabBarActiveTintColor: C.accent, tabBarInactiveTintColor: C.grey }}>
       <Tab.Screen name="Home"     component={HomeScreen}     options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Home"    color={color} /> }} />
       <Tab.Screen name="Memories" component={MemoriesScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💌"  focused={focused} badge={hasUnread} />, tabBarLabel: ({ color }) => <TabLabel label="Moments" color={color} /> }} />
       <Tab.Screen name="Vault"    component={VaultScreen}    options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🔐"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Vault"   color={color} /> }} />
@@ -226,7 +226,7 @@ function RecipientTabs() {
   const { tabBarHeight } = useNavScale()
   return (
     <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: [s.tabBar, { height: tabBarHeight }],
-      tabBarActiveTintColor: C.accent, tabBarInactiveTintColor: C.greyDim }}>
+      tabBarActiveTintColor: C.accent, tabBarInactiveTintColor: C.grey }}>
       <Tab.Screen name="Vault"    component={RecipientHomeScreen}   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💌"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="My Vault" color={color} /> }} />
       <Tab.Screen name="Family"   component={RecipientFamilyScreen} options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👨‍👩‍👧" focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Family"   color={color} /> }} />
       <Tab.Screen name="Settings" component={SettingsScreen}        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="⚙️"  focused={focused} />, tabBarLabel: ({ color }) => <TabLabel label="Profile"  color={color} /> }} />

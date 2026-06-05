@@ -1253,7 +1253,7 @@ export default function FamilyScreen() {
                     No Trusted Contact Set
                   </Text>
                   <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
-                    Tap ✏️ on a family member and enable Trusted Contact so Solace can notify them if you miss your check-ins.
+                    Tap a family member's card, then Edit, and turn on Trusted Contact — so Solace can notify them if you miss your check-ins.
                   </Text>
                 </View>
               </View>
@@ -1267,7 +1267,7 @@ export default function FamilyScreen() {
                     {trustedCount} Trusted Contact{trustedCount > 1 ? 's' : ''} Set
                   </Text>
                   <Text style={{ color: C.grey, fontSize: 12, lineHeight: 17 }}>
-                    They will be able to see your vault documents when the time comes. To also have Solace alert them if you ever miss your check-ins, tap ✏️ and turn on Emergency Contact.
+                    They will be able to see your vault documents when the time comes. To also have Solace alert them if you ever miss your check-ins, tap their card, then Edit, and turn on Emergency Contact.
                   </Text>
                 </View>
               </View>
@@ -1452,7 +1452,7 @@ export default function FamilyScreen() {
                           ) : null}
                           {!tm.email ? (
                             <Text style={{ color: '#FFB800', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
-                              ✉️ Add their email (tap ✏️) so we can ask them to accept this role
+                              ✉️ Add their email (tap their card, then Edit) so we can ask them to accept this role
                             </Text>
                           ) : !tm.email_confirmed ? (
                             <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '700' }}>⚠️ Not confirmed</Text>
@@ -1530,7 +1530,7 @@ export default function FamilyScreen() {
                           ) : null}
                           {(m.is_trusted_contact || m.is_emergency_contact) && !m.email ? (
                             <Text style={{ color: '#FFB800', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
-                              ✉️ Add their email (tap ✏️) so we can ask them to accept this role
+                              ✉️ Add their email (tap their card, then Edit) so we can ask them to accept this role
                             </Text>
                           ) : !m.email_confirmed ? (
                             <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '700' }}>⚠️ Not confirmed</Text>

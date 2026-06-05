@@ -167,7 +167,7 @@ export const s = StyleSheet.create({
   checkinLastText:       { color: C.greyDim, fontSize: 11, marginTop: 4 },
   checkinBtn:            { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 10, minWidth: 84, alignItems: 'center' },
   checkinBtnText:        { fontSize: 14, fontWeight: '700' },
-  checkinFreqBtn:        { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: C.greyDim + '88' },
+  checkinFreqBtn:        { paddingHorizontal: 16, paddingVertical: 14, borderRadius: 22, borderWidth: 1, borderColor: C.greyDim + '88' },
   checkinFreqBtnActive:  { backgroundColor: C.mauve, borderColor: C.mauve },
   checkinFreqText:       { color: C.grey, fontSize: 13, fontWeight: '600' },
   checkinFreqTextActive: { color: C.white },

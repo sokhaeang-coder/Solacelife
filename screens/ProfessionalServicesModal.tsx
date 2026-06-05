@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Modal, View, Text, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../lib/supabase'
@@ -147,9 +147,11 @@ export default function ProfessionalServicesModal({ visible, onClose }: Props) {
               {step === 'sent'    && 'A Solace Life partner will be in touch within 24 hours.'}
             </Text>
 
-            {/* ── SERVICE SELECTION GRID ── */}
+            {/* ── SERVICE SELECTION GRID ──
+                Scales with the screen (~80% sheet) instead of a fixed 480px cap,
+                which only filled ~60% on modern phones — less scrolling for seniors */}
             {step === 'select' && (
-              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              <ScrollView showsVerticalScrollIndicator={true} style={{ maxHeight: Dimensions.get('window').height * 0.66 }}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                   {SERVICES.map(svc => (
                     <TouchableOpacity

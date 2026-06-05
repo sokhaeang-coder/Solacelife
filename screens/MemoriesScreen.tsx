@@ -2623,10 +2623,11 @@ export default function MemoriesScreen({ navigation, route }: any) {
                                         senderName: group.memberName,
                                       })
                                     }}
-                                    style={{ paddingHorizontal: 10, paddingVertical: 12, alignSelf: 'center' }}
-                                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                                    style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', backgroundColor: C.mauveDim }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Hide this moment from view"
                                     activeOpacity={0.7}>
-                                    <Text style={{ fontSize: 15 }}>🗑️</Text>
+                                    <Text style={{ fontSize: 20 }}>🗑️</Text>
                                   </TouchableOpacity>
                                   {/* 🚩 Report — nested TouchableOpacity intercepts its own touch
                                       so the outer row tap (open memory) never fires for this button */}
@@ -2644,10 +2645,11 @@ export default function MemoriesScreen({ navigation, route }: any) {
                                       setReportMsg('')
                                       setShowReportModal(true)
                                     }}
-                                    style={{ paddingHorizontal: 10, paddingVertical: 12, alignSelf: 'center' }}
-                                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                                    style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', backgroundColor: C.mauveDim, marginLeft: 8 }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Report a concern about this moment"
                                     activeOpacity={0.7}>
-                                    <Text style={{ fontSize: 15 }}>🚩</Text>
+                                    <Text style={{ fontSize: 20 }}>🚩</Text>
                                   </TouchableOpacity>
                                 </View>
                               </TouchableOpacity>
@@ -2781,8 +2783,11 @@ export default function MemoriesScreen({ navigation, route }: any) {
                                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
                                   {m.name.split(' ')[0]}
                                 </Text>
+                                {/* Unreadable 8pt warning removed — the 13pt amber
+                                    warning box below the grid covers unconfirmed
+                                    recipients legibly. Keep just the icon as a cue. */}
                                 {unconfirmed && (
-                                  <Text style={{ fontSize: 8, lineHeight: 10 }}>⚠️ unconfirmed</Text>
+                                  <Text style={{ fontSize: 12, lineHeight: 14 }}>⚠️</Text>
                                 )}
                               </LinearGradient>
                               {/* Selected checkmark badge */}

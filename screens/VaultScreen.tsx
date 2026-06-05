@@ -1059,12 +1059,14 @@ export default function VaultScreen() {
                                       />
                                       <TouchableOpacity
                                         onPress={() => { setPrescriptionImageUri(null); setPickedFile(null) }}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        accessibilityRole="button" accessibilityLabel="Remove photo"
                                         style={{
-                                          position: 'absolute', top: -8, right: -8,
-                                          backgroundColor: '#3D1020', borderRadius: 12,
-                                          width: 24, height: 24, alignItems: 'center', justifyContent: 'center',
+                                          position: 'absolute', top: -10, right: -10,
+                                          backgroundColor: '#3D1020', borderRadius: 18,
+                                          width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
                                         }}>
-                                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✕</Text>
+                                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>✕</Text>
                                       </TouchableOpacity>
                                     </View>
                                     <Text style={{ fontSize: 12, color: '#7A3448', marginTop: 6, opacity: 0.7 }}>Photo will be saved with this prescription</Text>
@@ -1179,12 +1181,14 @@ export default function VaultScreen() {
                                   />
                                   <TouchableOpacity
                                     onPress={() => { setLegalScanUri(null); setPickedFile(null) }}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    accessibilityRole="button" accessibilityLabel="Remove scan"
                                     style={{
-                                      position: 'absolute', top: -8, right: -8,
-                                      backgroundColor: '#3D1020', borderRadius: 12,
-                                      width: 24, height: 24, alignItems: 'center', justifyContent: 'center',
+                                      position: 'absolute', top: -10, right: -10,
+                                      backgroundColor: '#3D1020', borderRadius: 18,
+                                      width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
                                     }}>
-                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✕</Text>
+                                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>✕</Text>
                                   </TouchableOpacity>
                                 </View>
                                 <Text style={{ fontSize: 12, color: '#7A3448', marginTop: 6, opacity: 0.7 }}>Scan will be saved with this document</Text>
@@ -1298,12 +1302,14 @@ export default function VaultScreen() {
                                   />
                                   <TouchableOpacity
                                     onPress={() => { setFinancialScanUri(null); setPickedFile(null) }}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    accessibilityRole="button" accessibilityLabel="Remove scan"
                                     style={{
-                                      position: 'absolute', top: -8, right: -8,
-                                      backgroundColor: '#3D1020', borderRadius: 12,
-                                      width: 24, height: 24, alignItems: 'center', justifyContent: 'center',
+                                      position: 'absolute', top: -10, right: -10,
+                                      backgroundColor: '#3D1020', borderRadius: 18,
+                                      width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
                                     }}>
-                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✕</Text>
+                                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>✕</Text>
                                   </TouchableOpacity>
                                 </View>
                                 <Text style={{ fontSize: 12, color: '#7A3448', marginTop: 6, opacity: 0.7 }}>Scan will be saved with this record</Text>

@@ -568,9 +568,10 @@ export default function HomeScreen({ navigation }: any) {
                   await AsyncStorage.setItem('solace_review_card_dismissed', '1')
                 }}
                 activeOpacity={0.7}
-                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                hitSlop={{ top: 16, right: 16, bottom: 16, left: 16 }}
+                accessibilityRole="button" accessibilityLabel="Dismiss"
                 style={{ position: 'absolute', top: 12, right: 14, zIndex: 1 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>✕</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16 }}>✕</Text>
               </TouchableOpacity>
 
               {/* Opening quote mark */}
@@ -616,8 +617,9 @@ export default function HomeScreen({ navigation }: any) {
                     setShowReviewCard(false)
                     await AsyncStorage.setItem('solace_review_card_dismissed', '1')
                   }}
-                  activeOpacity={0.6}>
-                  <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>Maybe later</Text>
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>Maybe later</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -729,22 +731,24 @@ export default function HomeScreen({ navigation }: any) {
                 Does a future AI Avatar model interest you?
               </Text>
               <View style={{ flexDirection: 'row', gap: 6 }}>
-                <TouchableOpacity onPress={() => handleAvatarResponse(true)} activeOpacity={0.75}>
+                <TouchableOpacity onPress={() => handleAvatarResponse(true)} activeOpacity={0.75}
+                  accessibilityRole="button" accessibilityLabel="Yes, the AI Avatar interests me">
                   <View style={{
-                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
-                    borderWidth: 1, borderColor: C.greyDim + '55',
+                    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10,
+                    borderWidth: 1.5, borderColor: C.accent + '88',
                     backgroundColor: C.bg3,
                   }}>
-                    <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '600' }}>Yes</Text>
+                    <Text style={{ color: C.offWhite, fontSize: 14, fontWeight: '700' }}>✓ Yes</Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleAvatarResponse(false)} activeOpacity={0.75}>
+                <TouchableOpacity onPress={() => handleAvatarResponse(false)} activeOpacity={0.75}
+                  accessibilityRole="button" accessibilityLabel="No, not interested in the AI Avatar">
                   <View style={{
-                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
+                    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10,
                     borderWidth: 1, borderColor: C.greyDim + '55',
                     backgroundColor: C.bg3,
                   }}>
-                    <Text style={{ color: C.offWhite, fontSize: 13, fontWeight: '600' }}>No</Text>
+                    <Text style={{ color: C.offWhite, fontSize: 14, fontWeight: '600' }}>No</Text>
                   </View>
                 </TouchableOpacity>
               </View>

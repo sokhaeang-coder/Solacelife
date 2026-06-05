@@ -963,7 +963,7 @@ export default function SettingsScreen({ navigation }: any) {
                 }}
                 activeOpacity={0.75}>
                 <Text style={[s.checkinFreqText, checkinProfile?.checkin_frequency === freq && s.checkinFreqTextActive]}>
-                  {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                  {checkinProfile?.checkin_frequency === freq ? '✓ ' : ''}{freq.charAt(0).toUpperCase() + freq.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -982,7 +982,7 @@ export default function SettingsScreen({ navigation }: any) {
                   setCheckinProfile((p: any) => ({ ...p, checkin_threshold: n }))
                 }}
                 activeOpacity={0.75}>
-                <Text style={[s.checkinFreqText, checkinProfile?.checkin_threshold === n && s.checkinFreqTextActive]}>{n}</Text>
+                <Text style={[s.checkinFreqText, checkinProfile?.checkin_threshold === n && s.checkinFreqTextActive]}>{checkinProfile?.checkin_threshold === n ? '✓ ' : ''}{n}</Text>
               </TouchableOpacity>
             ))}
           </View>
