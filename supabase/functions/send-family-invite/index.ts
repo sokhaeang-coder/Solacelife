@@ -105,8 +105,8 @@ function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText 
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#FFF8F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F5;padding:40px 20px;">
+<body style="margin:0;padding:0;background-color:#FFF8F2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F2;padding:40px 20px;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
 
@@ -124,10 +124,10 @@ function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText 
 
         <!-- Footer -->
         <tr><td align="center" style="padding-top:20px;">
-          <p style="margin:0 0 4px;font-size:12px;color:#7A3448;opacity:0.7;">
+          <p style="margin:0 0 4px;font-size:12px;color:#A87A52;opacity:0.85;">
             Sent with love via <a href="https://solacelife.ca" style="color:#F06292;text-decoration:none;font-weight:600;">Solace Life</a>
           </p>
-          <p style="margin:0;font-size:11px;color:#7A3448;opacity:0.5;">${footerText}</p>
+          <p style="margin:0;font-size:11px;color:#A87A52;opacity:0.7;">${footerText}</p>
         </td></tr>
 
       </table>
@@ -163,27 +163,27 @@ function buildInviteEmail({
     headerIcon: '💌',
     headerSubtitle: 'Someone who cares about you has something to share',
     bodyHtml: `
-      <p style="margin:0 0 6px;font-size:13px;color:#7A3448;font-style:italic;">Dear ${recipientName},</p>
-      <p style="margin:8px 0 16px;font-size:15px;color:#3D1020;line-height:1.65;">
+      <p style="margin:0 0 6px;font-size:13px;color:#6B4A35;font-style:italic;">Dear ${recipientName},</p>
+      <p style="margin:8px 0 16px;font-size:15px;color:#4A2418;line-height:1.65;">
         <strong style="color:#F06292;">${relationshipLine}</strong>
         has been saving something just for you — personal letters, voice messages,
         and moments they want you to have.
       </p>
 
       <div style="background:#FFF0E8;border-radius:14px;padding:18px 20px;border:1px solid #F9D0BB;margin-bottom:20px;">
-        <p style="margin:0 0 10px;font-size:14px;color:#3D1020;line-height:1.65;">
+        <p style="margin:0 0 10px;font-size:14px;color:#4A2418;line-height:1.65;">
           ${senderName} is using Solace Life to send personal messages to the people
           they love most — on birthdays, quiet Tuesdays, or whenever you need it most.
         </p>
-        <p style="margin:0;font-size:13px;color:#7A3448;line-height:1.6;">
+        <p style="margin:0;font-size:13px;color:#6B4A35;line-height:1.6;">
           Messages arrive by email — right in your browser. No app needed. No subscription required.
         </p>
       </div>
 
-      <p style="margin:0 0 6px;font-size:15px;color:#3D1020;text-align:center;font-weight:600;">
+      <p style="margin:0 0 6px;font-size:15px;color:#4A2418;text-align:center;font-weight:600;">
         ${senderName} has something for you. Would you like to receive it?
       </p>
-      <p style="margin:0 0 22px;font-size:13px;color:#7A3448;text-align:center;">
+      <p style="margin:0 0 22px;font-size:13px;color:#6B4A35;text-align:center;">
         This is entirely your choice. You can change your mind any time.
       </p>
 
@@ -197,19 +197,19 @@ function buildInviteEmail({
       </div>
       <div style="text-align:center;margin-bottom:20px;">
         <a href="${declineUrl}"
-          style="display:inline-block;background:transparent;color:#7A3448;
+          style="display:inline-block;background:transparent;color:#6B4A35;
                   text-decoration:none;font-weight:600;font-size:13px;
                   padding:10px 28px;border-radius:50px;border:1px solid #F9D0BB;">
           I'd prefer to stay connected another way
         </a>
       </div>
 
-      <p style="margin:0 0 20px;font-size:12px;color:#7A3448;text-align:center;opacity:0.7;">
+      <p style="margin:0 0 20px;font-size:12px;color:#6B4A35;text-align:center;opacity:0.7;">
         This is just for you — ${senderName} won't know which option you selected.
       </p>
 
       <div style="border-top:1px solid #F9D0BB;padding-top:18px;text-align:center;">
-        <p style="margin:0 0 10px;font-size:13px;color:#7A3448;">Want to keep all your messages in one place?</p>
+        <p style="margin:0 0 10px;font-size:13px;color:#6B4A35;">Want to keep all your messages in one place?</p>
         <a href="https://solacelife.ca"
           style="display:inline-block;background:transparent;color:#F06292;
                   text-decoration:none;font-weight:600;font-size:14px;

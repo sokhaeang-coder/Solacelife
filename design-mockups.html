@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solace Life — Design Direction Mockups · Wren Sato</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#1a1a1a;color:#fff}
+  .divider{background:#111;color:#999;padding:30px 24px;text-align:center;border-top:1px solid #333}
+  .divider .tag{display:inline-block;background:#333;color:#fff;font-weight:700;font-size:13px;letter-spacing:.15em;padding:6px 16px;border-radius:20px;margin-bottom:12px}
+  .divider h2{color:#fff;font-size:24px;margin-bottom:8px}
+  .divider p{font-size:14px;max-width:640px;margin:0 auto;line-height:1.6}
+  .mock{overflow:hidden}
+  .inner{max-width:920px;margin:0 auto;padding:0 28px}
+
+  /* ════ DIRECTION A — WARM EDITORIAL ════ */
+  .a{background:#F6F3EC;color:#2A2118;font-family:'Inter',sans-serif}
+  .a .hero{padding:80px 0 64px;text-align:center;background:linear-gradient(180deg,#F6F3EC 0%,#EFE9DB 100%)}
+  .a .kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#A07830;font-weight:600;margin-bottom:24px}
+  .a h1{font-family:'Playfair Display',Georgia,serif;font-size:clamp(34px,5.4vw,54px);font-weight:500;line-height:1.18;color:#2A2118;max-width:760px;margin:0 auto 22px}
+  .a h1 em{font-style:italic;color:#B8862E}
+  .a .sub{font-size:19px;color:#6B5F4D;max-width:560px;margin:0 auto 36px;line-height:1.65}
+  .a .cta{display:inline-block;background:#2A2118;color:#F6F3EC;font-size:16px;font-weight:600;padding:16px 40px;border-radius:2px;text-decoration:none;letter-spacing:.04em}
+  .a .cta2{display:inline-block;color:#2A2118;font-size:16px;font-weight:600;padding:16px 24px;text-decoration:none;border-bottom:2px solid #B8862E;margin-left:14px}
+  .a .rule{width:64px;height:1px;background:#B8862E;margin:0 auto 24px}
+  .a .strip{border-top:1px solid #D9D2C2;border-bottom:1px solid #D9D2C2;padding:18px 0;text-align:center;font-size:15px;color:#6B5F4D;letter-spacing:.06em}
+  .a .strip b{color:#A07830}
+  .a .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:#D9D2C2;border:1px solid #D9D2C2;margin:64px 0}
+  .a .card{background:#F6F3EC;padding:36px 30px}
+  .a .card .num{font-family:'Playfair Display',serif;font-size:30px;color:#B8862E;font-style:italic;margin-bottom:12px}
+  .a .card h3{font-family:'Playfair Display',serif;font-size:21px;font-weight:500;margin-bottom:10px}
+  .a .card p{font-size:15px;color:#6B5F4D;line-height:1.7}
+  .a .foot{padding-bottom:72px}
+
+  /* ════ DIRECTION B — APP MIRROR ════ */
+  .b{background:#FFF8F2;color:#3D1020}
+  .b .hero{padding:76px 0 60px;text-align:center;background:linear-gradient(160deg,#FFE3D0 0%,#FFD2CE 45%,#F8C4D8 100%)}
+  .b .kicker{display:inline-block;background:rgba(255,255,255,.55);color:#7A3448;font-size:13.5px;font-weight:700;padding:8px 20px;border-radius:24px;margin-bottom:24px;letter-spacing:.08em}
+  .b h1{font-size:clamp(32px,5vw,48px);font-weight:800;line-height:1.18;color:#3D1020;max-width:740px;margin:0 auto 20px}
+  .b .sub{font-size:19px;color:#7A3448;max-width:560px;margin:0 auto 34px;line-height:1.6}
+  .b .cta{display:inline-block;background:#F06292;color:#fff;font-size:17px;font-weight:700;padding:17px 42px;border-radius:16px;text-decoration:none;box-shadow:0 8px 24px rgba(240,98,146,.38)}
+  .b .cta2{display:inline-block;background:rgba(255,255,255,.78);color:#3D1020;font-size:17px;font-weight:700;padding:17px 30px;border-radius:16px;text-decoration:none;border:1.5px solid rgba(255,255,255,.9);margin-left:12px}
+  .b .strip{background:#3D1020;color:#F8C4D8;padding:16px 0;text-align:center;font-size:15.5px;font-weight:500}
+  .b .strip b{color:#FFD07A}
+  .b .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:56px 0}
+  .b .card{background:#fff;border-radius:22px;padding:30px 26px;box-shadow:0 4px 20px rgba(61,16,32,.07);border:1px solid #F8E3EA}
+  .b .card .ico{width:54px;height:54px;border-radius:27px;background:rgba(240,98,146,.12);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px}
+  .b .card h3{font-size:19px;font-weight:800;margin-bottom:8px}
+  .b .card p{font-size:15px;color:#7A3448;line-height:1.65}
+  .b .foot{padding-bottom:68px}
+
+  /* ════ DIRECTION C — HERITAGE LUXE ════ */
+  .c{background:#211E17;color:#F6F3EC}
+  .c .hero{padding:84px 0 68px;text-align:center;background:radial-gradient(ellipse at 50% -20%,#3A3426 0%,#211E17 60%)}
+  .c .kicker{font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:#D9B96A;font-weight:600;margin-bottom:26px}
+  .c h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(38px,5.8vw,58px);font-weight:500;line-height:1.14;max-width:780px;margin:0 auto 22px;color:#F6F3EC}
+  .c h1 em{font-style:italic;color:#D9B96A}
+  .c .sub{font-size:18px;color:#B8AE96;max-width:560px;margin:0 auto 38px;line-height:1.7}
+  .c .cta{display:inline-block;background:#D9B96A;color:#211E17;font-size:15.5px;font-weight:700;padding:17px 44px;border-radius:2px;text-decoration:none;letter-spacing:.1em;text-transform:uppercase}
+  .c .cta2{display:inline-block;color:#D9B96A;font-size:15.5px;font-weight:600;padding:17px 26px;text-decoration:none;border:1px solid #D9B96A55;border-radius:2px;margin-left:14px;letter-spacing:.06em}
+  .c .ornament{color:#D9B96A;font-size:18px;letter-spacing:.6em;margin-bottom:24px}
+  .c .strip{border-top:1px solid #D9B96A33;border-bottom:1px solid #D9B96A33;padding:18px 0;text-align:center;font-size:14.5px;color:#B8AE96;letter-spacing:.1em}
+  .c .strip b{color:#D9B96A}
+  .c .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin:60px 0}
+  .c .card{background:#2A261C;border:1px solid #D9B96A2E;padding:34px 28px;position:relative}
+  .c .card::before{content:'';position:absolute;top:0;left:28px;right:28px;height:2px;background:#D9B96A}
+  .c .card h3{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:#F6F3EC;margin-bottom:10px}
+  .c .card p{font-size:14.5px;color:#B8AE96;line-height:1.75}
+  .c .foot{padding-bottom:76px}
+
+  /* Wren's notes */
+  .notes{background:#0d0d0d;padding:26px 24px;border-top:1px solid #2a2a2a}
+  .notes .inner{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+  .notes h4{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+  .notes .pro h4{color:#6BCB8B}.notes .con h4{color:#E08A8A}.notes .fit h4{color:#8AB4E0}
+  .notes p{font-size:14px;color:#aaa;line-height:1.65}
+</style>
+</head>
+<body>
+
+<div class="divider" style="padding:48px 24px 36px">
+  <div class="tag">WREN SATO · DESIGN DIRECTIONS</div>
+  <h2>Three faces for one brand</h2>
+  <p>Identical content, three complete style systems. Scroll through all three before judging any one — the right answer is usually obvious by the second pass. Every direction holds the accessibility line: 17px+ body, AA contrast, generous tap targets.</p>
+</div>
+
+<!-- ═══════════ DIRECTION A ═══════════ -->
+<div class="divider"><div class="tag">DIRECTION A</div><h2>Warm Editorial</h2><p>The main site's DNA, refined. Letterpress serenity — Playfair serif, parchment, hairline rules, candlelight gold. Whispers heritage.</p></div>
+<div class="mock a">
+  <div class="hero">
+    <div class="inner">
+      <div class="kicker">Solace Life · Vancouver</div>
+      <h1>Your stories deserve<br>to <em>outlive you.</em></h1>
+      <div class="rule"></div>
+      <p class="sub">Record your voice, your memories, your love — delivered to the people who matter, on the days that matter, for decades to come.</p>
+      <a class="cta" href="#">Begin Your Legacy</a><a class="cta2" href="#">See how it works</a>
+    </div>
+  </div>
+  <div class="strip"><b>✦</b>&nbsp; Founder-led &nbsp;·&nbsp; RCMP-screened &nbsp;·&nbsp; Built in British Columbia &nbsp;·&nbsp; Not a will — copies of memories only &nbsp;<b>✦</b></div>
+  <div class="inner foot">
+    <div class="cards">
+      <div class="card"><div class="num">I.</div><h3>Record in minutes</h3><p>A story, a recipe, the way you laugh. Voice, video, or written — no technical skill required.</p></div>
+      <div class="card"><div class="num">II.</div><h3>Delivered on the days that matter</h3><p>A granddaughter's wedding. A son's fiftieth. Messages arrive exactly when you intended, for years to come.</p></div>
+      <div class="card"><div class="num">III.</div><h3>One place your family can find</h3><p>Important information, organised and shared only with the people you choose — when the time comes.</p></div>
+    </div>
+  </div>
+</div>
+<div class="notes"><div class="inner">
+  <div class="pro"><h4>Pros</h4><p>Timeless — won't look dated in five years. Reads "trustworthy institution" to directors and estate lawyers. Closest to the existing main site, so cheapest path to consistency.</p></div>
+  <div class="con"><h4>Cons</h4><p>Almost no visual connection to the app a user actually downloads — the parchment-to-pink handoff at install is a brand break. Quietest of the three; risks beige forgettability if executed lazily.</p></div>
+  <div class="fit"><h4>Wren's fit read</h4><p>Strongest for B2B trust surfaces (care homes, partners). Weakest at the app store doorstep.</p></div>
+</div></div>
+
+<!-- ═══════════ DIRECTION B ═══════════ -->
+<div class="divider"><div class="tag">DIRECTION B</div><h2>App Mirror</h2><p>The app's WARM world carried to the web. One unbroken visual story from first ad to daily use. Soft, rounded, alive.</p></div>
+<div class="mock b">
+  <div class="hero">
+    <div class="inner">
+      <div class="kicker">SOLACE LIFE · VANCOUVER, BC</div>
+      <h1>Your stories deserve to outlive you.</h1>
+      <p class="sub">Record your voice, your memories, your love — delivered to the people who matter, on the days that matter, for decades to come.</p>
+      <a class="cta" href="#">Begin Your Legacy</a><a class="cta2" href="#">See how it works</a>
+    </div>
+  </div>
+  <div class="strip"><b>✓</b> Founder-led &nbsp;·&nbsp; <b>✓</b> RCMP-screened &nbsp;·&nbsp; <b>✓</b> Built in BC &nbsp;·&nbsp; <b>✓</b> Not a will — copies of memories only</div>
+  <div class="inner foot">
+    <div class="cards">
+      <div class="card"><div class="ico">🎙️</div><h3>Record in minutes</h3><p>A story, a recipe, the way you laugh. Voice, video, or written — no technical skill required.</p></div>
+      <div class="card"><div class="ico">📅</div><h3>Delivered on the days that matter</h3><p>A granddaughter's wedding. A son's fiftieth. Messages arrive exactly when you intended, for years to come.</p></div>
+      <div class="card"><div class="ico">🔐</div><h3>One place your family can find</h3><p>Important information, organised and shared only with the people you choose — when the time comes.</p></div>
+    </div>
+  </div>
+</div>
+<div class="notes"><div class="inner">
+  <div class="pro"><h4>Pros</h4><p>Seamless brand: the page, the screenshots, and the installed app are one world — highest conversion logic for consumer downloads. Warmest emotional register of the three; the care-homes page already lives here.</p></div>
+  <div class="con"><h4>Cons</h4><p>Pink-forward palettes read "consumer app," which can soften authority with estate lawyers and institutional partners. Gradient-heavy styles age faster than editorial ones — expect a refresh inside three years.</p></div>
+  <div class="fit"><h4>Wren's fit read</h4><p>Strongest for consumer acquisition and family-facing surfaces. Workable everywhere if the plum gets more airtime than the pink on B2B pages.</p></div>
+</div></div>
+
+<!-- ═══════════ DIRECTION C ═══════════ -->
+<div class="divider"><div class="tag">DIRECTION C</div><h2>Heritage Luxe</h2><p>The partners page's dark-and-gold, made deliberate. Candlelit estate library. Gravitas as a feature.</p></div>
+<div class="mock c">
+  <div class="hero">
+    <div class="inner">
+      <div class="kicker">Solace Life — Est. Vancouver, BC</div>
+      <div class="ornament">✦ ✦ ✦</div>
+      <h1>Your stories deserve<br>to <em>outlive you.</em></h1>
+      <p class="sub">Record your voice, your memories, your love — delivered to the people who matter, on the days that matter, for decades to come.</p>
+      <a class="cta" href="#">Begin Your Legacy</a><a class="cta2" href="#">See How It Works</a>
+    </div>
+  </div>
+  <div class="strip"><b>✦</b>&nbsp; Founder-led &nbsp;·&nbsp; RCMP-screened &nbsp;·&nbsp; Built in British Columbia &nbsp;·&nbsp; Not a will — copies of memories only &nbsp;<b>✦</b></div>
+  <div class="inner foot">
+    <div class="cards">
+      <div class="card"><h3>Record in minutes</h3><p>A story, a recipe, the way you laugh. Voice, video, or written — no technical skill required.</p></div>
+      <div class="card"><h3>Delivered on the days that matter</h3><p>A granddaughter's wedding. A son's fiftieth. Messages arrive exactly when you intended, for years to come.</p></div>
+      <div class="card"><h3>One place your family can find</h3><p>Important information, organised and shared only with the people you choose — when the time comes.</p></div>
+    </div>
+  </div>
+</div>
+<div class="notes"><div class="inner">
+  <div class="pro"><h4>Pros</h4><p>Unmistakable — nobody forgets this page. Premium pricing feels natural here; $99/year looks cheap against this backdrop. Differentiates hard against Storyworth's friendly-pastel category norms.</p></div>
+  <div class="con"><h4>Cons</h4><p>Dark + death-adjacent product is a knife's edge: one wrong note and it reads funereal instead of heirloom. Hardest accessibility lift — light-on-dark strains older eyes in daylight. Furthest from the app.</p></div>
+  <div class="fit"><h4>Wren's fit read</h4><p>Strongest as a B2B/partner identity or a premium tier face. Too heavy as the everyday consumer front door.</p></div>
+</div></div>
+
+<div class="divider" style="padding:44px 24px 56px">
+  <div class="tag">WREN'S RECOMMENDATION</div>
+  <h2>B leads, A supports, C retires to the cellar</h2>
+  <p>One brand can hold two registers but not three. Wren's call: App Mirror (B) becomes the system — it's the only direction where the ad, the website, and the product are one continuous memory. Warm Editorial's serif headlines get absorbed INTO B as the display type for hero moments, giving you warmth plus gravitas in a single system. Heritage Luxe is retired as a site style but kept as the print register for estate-channel documents. Disagree freely — that's what mockups are for.</p>
+</div>
+
+</body>
+</html>

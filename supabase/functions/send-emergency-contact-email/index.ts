@@ -137,8 +137,8 @@ function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText 
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#FFF8F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F5;padding:40px 20px;">
+<body style="margin:0;padding:0;background-color:#FFF8F2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8F2;padding:40px 20px;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
         <tr><td style="background:linear-gradient(160deg,#F06292 0%,#F48A5A 55%,#FFD07A 100%);border-radius:20px 20px 0 0;padding:36px 32px 28px;text-align:center;">
@@ -150,10 +150,10 @@ function sunriseEmail({ title, headerIcon, headerSubtitle, bodyHtml, footerText 
           ${bodyHtml}
         </td></tr>
         <tr><td align="center" style="padding-top:20px;">
-          <p style="margin:0 0 4px;font-size:12px;color:#7A3448;opacity:0.7;">
+          <p style="margin:0 0 4px;font-size:12px;color:#A87A52;opacity:0.85;">
             Sent with love via <a href="https://solacelife.ca" style="color:#F06292;text-decoration:none;font-weight:600;">Solace Life</a>
           </p>
-          <p style="margin:0;font-size:11px;color:#7A3448;opacity:0.5;">${footerText}</p>
+          <p style="margin:0;font-size:11px;color:#A87A52;opacity:0.7;">${footerText}</p>
         </td></tr>
       </table>
     </td></tr>
@@ -195,16 +195,16 @@ function buildConsentEmail({
     headerIcon: '🛡️',
     headerSubtitle: 'An emergency contact request',
     bodyHtml: `
-      <p style="margin:0 0 6px;font-size:13px;color:#7A3448;font-style:italic;">Dear ${recipientName},</p>
-      <p style="margin:8px 0 20px;font-size:15px;color:#3D1020;line-height:1.65;">${introLine}</p>
+      <p style="margin:0 0 6px;font-size:13px;color:#6B4A35;font-style:italic;">Dear ${recipientName},</p>
+      <p style="margin:8px 0 20px;font-size:15px;color:#4A2418;line-height:1.65;">${introLine}</p>
 
       <div style="background:#FFF0E8;border-radius:14px;border:1px solid #F9D0BB;padding:18px 20px;margin-bottom:20px;">
-        <p style="margin:0 0 14px;font-size:11px;color:#7A3448;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">What this means for you</p>
+        <p style="margin:0 0 14px;font-size:11px;color:#6B4A35;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">What this means for you</p>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td style="padding-bottom:14px;vertical-align:top;width:28px;"><p style="margin:0;font-size:18px;line-height:1;">📱</p></td>
             <td style="padding-bottom:14px;padding-left:12px;vertical-align:top;">
-              <p style="margin:0;font-size:14px;color:#3D1020;line-height:1.55;">
+              <p style="margin:0;font-size:14px;color:#4A2418;line-height:1.55;">
                 <strong>Your name may appear on their phone's lock screen</strong> — accessible to first responders if there's ever an emergency.
               </p>
             </td>
@@ -212,7 +212,7 @@ function buildConsentEmail({
           <tr>
             <td style="padding-bottom:14px;vertical-align:top;"><p style="margin:0;font-size:18px;line-height:1;">🔐</p></td>
             <td style="padding-bottom:14px;padding-left:12px;vertical-align:top;">
-              <p style="margin:0;font-size:14px;color:#3D1020;line-height:1.55;">
+              <p style="margin:0;font-size:14px;color:#4A2418;line-height:1.55;">
                 <strong>You may be asked to help release their vault</strong> — the memories and documents ${senderName} has stored for their loved ones.
               </p>
             </td>
@@ -220,7 +220,7 @@ function buildConsentEmail({
           <tr>
             <td style="vertical-align:top;"><p style="margin:0;font-size:18px;line-height:1;">💛</p></td>
             <td style="padding-left:12px;vertical-align:top;">
-              <p style="margin:0;font-size:14px;color:#3D1020;line-height:1.55;">
+              <p style="margin:0;font-size:14px;color:#4A2418;line-height:1.55;">
                 <strong>It means ${senderName} trusts you completely</strong> — you are ${relationshipPhrase} they want by their side most.
               </p>
             </td>
@@ -228,7 +228,7 @@ function buildConsentEmail({
         </table>
       </div>
 
-      <p style="margin:0 0 22px;font-size:14px;color:#7A3448;text-align:center;line-height:1.65;">
+      <p style="margin:0 0 22px;font-size:14px;color:#6B4A35;text-align:center;line-height:1.65;">
         You are free to accept or decline — this is entirely your choice.<br>
         If you decline, ${senderName} will not be notified of your decision.
       </p>
@@ -243,19 +243,19 @@ function buildConsentEmail({
       </div>
       <div style="text-align:center;margin-bottom:20px;">
         <a href="${declineUrl}"
-          style="display:inline-block;background:transparent;color:#7A3448;
+          style="display:inline-block;background:transparent;color:#6B4A35;
                   text-decoration:none;font-weight:500;font-size:13px;
                   padding:10px 28px;border-radius:50px;border:1px solid #F9D0BB;">
           No thank you
         </a>
       </div>
 
-      <p style="margin:0 0 20px;font-size:12px;color:#7A3448;text-align:center;opacity:0.7;">
+      <p style="margin:0 0 20px;font-size:12px;color:#6B4A35;text-align:center;opacity:0.7;">
         Your response is private. ${senderName} will not see whether you accepted or declined.
       </p>
 
       <div style="border-top:1px solid #F9D0BB;padding-top:18px;text-align:center;">
-        <p style="margin:0 0 10px;font-size:13px;color:#7A3448;">Want to record your own memories for the people you love?</p>
+        <p style="margin:0 0 10px;font-size:13px;color:#6B4A35;">Want to record your own memories for the people you love?</p>
         <a href="https://solacelife.ca"
           style="display:inline-block;background:transparent;color:#F06292;
                   text-decoration:none;font-weight:600;font-size:13px;

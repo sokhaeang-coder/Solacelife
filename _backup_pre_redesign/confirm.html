@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v8 — Living Sky redesign: static warm gradient, frosted glass card. Copy unchanged from v7 ("honoured to", "No explanation needed") -->
+<!-- v7 — Warmer EC copy: "honoured to", "No explanation needed" -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -7,7 +7,7 @@
   <title>Solace Life — Confirm Invitation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -15,11 +15,9 @@
       height: 100%;
       font-family: 'Inter', -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
-      background: #FFF8F2;
-      color: #4A2418;
     }
 
-    /* ── Full-page scene — static warm gradient (Living Sky) ──── */
+    /* ── Full-page scene ──────────────────────────────────────── */
     .scene {
       position: relative;
       min-height: 100vh;
@@ -29,28 +27,107 @@
       justify-content: center;
       overflow: hidden;
       padding: 40px 24px 100px;
-      background: linear-gradient(160deg, #FFE3D0, #FFD2CE 45%, #F8C4D8);
     }
 
-    /* soft cream fade at the very bottom of the scene */
-    .scene::after {
-      content: '';
+    /* ── Sky — six phases cycling 54s ─────────────────────────── */
+    .sky {
       position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 120px;
-      background: linear-gradient(180deg, rgba(255,248,242,0), #FFF8F2);
-      pointer-events: none;
-      z-index: 0;
+      inset: 0;
+      opacity: 0;
+      animation: skyPhase 54s ease-in-out infinite;
     }
 
-    /* ── Grass — gentle meadow at the foot of the scene ───────── */
+    /* Pre-dawn */
+    .sky-1 {
+      background: linear-gradient(to bottom,
+        #5A4890 0%, #8B68AA 28%, #C47890 52%, #A03858 70%, #3A1820 100%);
+      animation-delay: 0s;
+    }
+    /* Sunrise */
+    .sky-2 {
+      background: linear-gradient(to bottom,
+        #6B5A9E 0%, #A870A0 28%, #E06030 52%, #F4A020 70%, #4A3020 100%);
+      animation-delay: -9s;
+    }
+    /* Morning */
+    .sky-3 {
+      background: linear-gradient(to bottom,
+        #7878B8 0%, #B890A8 30%, #E09040 54%, #F4B830 72%, #503820 100%);
+      animation-delay: -18s;
+    }
+    /* Golden hour */
+    .sky-4 {
+      background: linear-gradient(to bottom,
+        #7A5A9C 0%, #C06080 30%, #E05030 52%, #F4A020 70%, #443020 100%);
+      animation-delay: -27s;
+    }
+    /* Sunset */
+    .sky-5 {
+      background: linear-gradient(to bottom,
+        #5C4898 0%, #B05080 28%, #D83C30 50%, #F08020 68%, #2A1810 100%);
+      animation-delay: -36s;
+    }
+    /* Dusk */
+    .sky-6 {
+      background: linear-gradient(to bottom,
+        #4A3C88 0%, #8B5A98 30%, #B04060 54%, #7A2030 74%, #241418 100%);
+      animation-delay: -45s;
+    }
+
+    @keyframes skyPhase {
+      0%   { opacity: 0; }
+      6%   { opacity: 1; }
+      72%  { opacity: 1; }
+      83%  { opacity: 0; }
+      100% { opacity: 0; }
+    }
+
+    /* ── Sun glow ─────────────────────────────────────────────── */
+    .sun-glow {
+      position: absolute;
+      bottom: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      height: 120px;
+      border-radius: 50%;
+      filter: blur(28px);
+      animation: sunShift 54s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes sunShift {
+      0%   { background: radial-gradient(ellipse, rgba(180,56,85,0.45)  0%, transparent 70%); }
+      11%  { background: radial-gradient(ellipse, rgba(244,160,32,0.65) 0%, transparent 70%); }
+      22%  { background: radial-gradient(ellipse, rgba(244,184,48,0.55) 0%, transparent 70%); }
+      44%  { background: radial-gradient(ellipse, rgba(244,160,32,0.65) 0%, transparent 70%); }
+      67%  { background: radial-gradient(ellipse, rgba(240,128,32,0.70) 0%, transparent 70%); }
+      89%  { background: radial-gradient(ellipse, rgba(160,48,80,0.40)  0%, transparent 70%); }
+      100% { background: radial-gradient(ellipse, rgba(180,56,85,0.45)  0%, transparent 70%); }
+    }
+
+    /* ── Overlay — darkens scene so text is legible ───────────── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(20,15,5,0.20)  0%,
+        rgba(10,8,2,0.06)   38%,
+        rgba(5,4,1,0.40)    72%,
+        rgba(2,2,1,0.65)    100%
+      );
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ── Grass — z-index above overlay so blades show ─────────── */
     .grass-wrap {
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 22%;
-      z-index: 1;
+      height: 36%;
+      z-index: 2;
       pointer-events: none;
-      opacity: .5;
     }
 
     .blade {
@@ -66,49 +143,39 @@
       to   { transform: rotate(var(--lean-to)); }
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .blade { animation: none; }
-    }
-
-    /* ── Content — frosted glass card over the warm sky ───────── */
+    /* ── Content — above grass ────────────────────────────────── */
     .content {
       position: relative;
       z-index: 3;
-      max-width: 520px;
+      max-width: 480px;
       width: 100%;
       text-align: center;
-      background: rgba(255,255,255,.72);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(255,255,255,.85);
-      border-radius: 26px;
-      box-shadow: 0 18px 50px rgba(74,36,24,.10);
-      padding: 44px 36px 40px;
     }
 
     /* ── Logo ─────────────────────────────────────────────────── */
     .logo {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: .3em;
-      text-transform: uppercase;
-      color: #4A2418;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.2rem;
+      color: #F6F3EC;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
       margin-bottom: 6px;
     }
     .logo-sub {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-size: 0.95rem;
-      color: #C06A2E;
-      margin-bottom: 44px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(246,243,236,0.60);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.4);
+      margin-bottom: 56px;
     }
 
     /* ── Gold divider line ────────────────────────────────────── */
     .gold-rule {
       width: 40px;
-      height: 2px;
-      border-radius: 2px;
-      background: linear-gradient(90deg, #F06292, #F48A5A, #FFD07A);
+      height: 1px;
+      background: rgba(196,154,60,0.65);
       margin: 28px auto;
     }
 
@@ -119,8 +186,8 @@
     /* Spinner */
     .spinner {
       width: 44px; height: 44px;
-      border: 3px solid rgba(232,118,58,.22);
-      border-top-color: #E8763A;
+      border: 2.5px solid rgba(246,243,236,0.2);
+      border-top-color: rgba(246,243,236,0.8);
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
       margin: 0 auto 20px;
@@ -128,8 +195,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .spinner-text {
-      font-size: 16px;
-      color: #8A5A3A;
+      font-size: 15px;
+      color: rgba(246,243,236,0.75);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
     }
 
     /* Icon */
@@ -139,7 +207,7 @@
       margin-bottom: 24px;
       display: block;
       animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
-      filter: drop-shadow(0 6px 16px rgba(74,36,24,.18));
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,0.4));
     }
     @keyframes popIn {
       from { transform: scale(0.3); opacity: 0; }
@@ -148,112 +216,123 @@
 
     /* Eyebrow */
     .eyebrow {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.2em;
+      font-size: 0.70rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: #E8763A;
+      color: rgba(196,154,60,0.85);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
       display: block;
       margin-bottom: 16px;
     }
 
     h1 {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.8rem, 5vw, 2.4rem);
-      font-weight: 500;
-      color: #4A2418;
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      font-weight: 400;
+      color: #F6F3EC;
       line-height: 1.2;
       margin-bottom: 16px;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
     }
 
     .body-text {
-      font-size: 1.06rem;
-      color: #8A5A3A;
+      font-size: 1rem;
+      color: rgba(246,243,236,0.85);
       line-height: 1.75;
       margin-bottom: 10px;
-      font-weight: 400;
+      font-weight: 300;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.5);
     }
 
     .name-highlight {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      color: #C06A2E;
+      color: #EDD9A3;
       font-weight: 500;
     }
 
-    /* Primary CTA button — warm gradient, matches the app's login button */
+    /* Primary CTA button — cream pill, matches landing page hero */
     .cta-btn {
       display: inline-block;
-      background: linear-gradient(90deg, #F06292, #F48A5A, #FFD07A);
-      color: #4A2418;
+      background: rgba(246,243,236,0.96);
+      color: #211E17;
       text-decoration: none;
-      font-weight: 700;
-      font-size: 1rem;
+      font-weight: 500;
+      font-size: 0.95rem;
       padding: 16px 40px;
-      border-radius: 18px;
+      border-radius: 50px;
       letter-spacing: 0.01em;
-      transition: transform 0.25s ease;
+      transition: opacity 0.2s, transform 0.15s;
       cursor: pointer;
       border: none;
-      box-shadow: 0 10px 30px rgba(244,138,90,.5);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
     }
-    .cta-btn:hover { transform: translateY(-2px); }
+    .cta-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
     /* Ghost / secondary button */
     .ghost-btn {
       display: inline-block;
-      background: rgba(255,255,255,.55);
-      color: #C06A2E;
+      background: transparent;
+      color: rgba(246,243,236,0.75);
       text-decoration: none;
-      font-weight: 600;
-      font-size: 0.92rem;
+      font-weight: 400;
+      font-size: 0.9rem;
       padding: 14px 36px;
-      border-radius: 18px;
-      border: 1.5px solid rgba(255,255,255,.9);
-      transition: border-color 0.2s;
+      border-radius: 50px;
+      border: 1px solid rgba(246,243,236,0.30);
+      transition: opacity 0.2s;
       cursor: pointer;
       margin-top: 12px;
     }
-    .ghost-btn:hover { border-color: #E8763A; }
+    .ghost-btn:hover { opacity: 0.70; }
 
     .privacy-note {
-      font-size: 0.82rem;
-      color: #8A5A3A;
-      opacity: .8;
+      font-size: 0.78rem;
+      color: rgba(246,243,236,0.42);
       margin-top: 18px;
-      line-height: 1.6;
+      line-height: 1.5;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
 
     .error-detail {
-      font-size: 0.82rem;
-      color: #C2503A;
+      font-size: 0.80rem;
+      color: rgba(255,180,160,0.70);
       margin-top: 10px;
     }
 
     .footer-link {
       display: block;
       margin-top: 36px;
-      font-size: 0.78rem;
-      color: #8A5A3A;
-      opacity: .6;
+      font-size: 0.75rem;
+      color: rgba(246,243,236,0.32);
       text-decoration: none;
       letter-spacing: 0.05em;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
     }
-    .footer-link:hover { opacity: 1; color: #E8763A; }
-
-    @media (max-width: 480px) {
-      .content { padding: 36px 24px 32px; }
-    }
+    .footer-link:hover { color: rgba(246,243,236,0.58); }
   </style>
 </head>
 <body>
 
   <div class="scene">
 
-    <!-- Grass (gentle meadow at the foot of the warm sky) -->
+    <!-- Sky phases -->
+    <div class="sky sky-1"></div>
+    <div class="sky sky-2"></div>
+    <div class="sky sky-3"></div>
+    <div class="sky sky-4"></div>
+    <div class="sky sky-5"></div>
+    <div class="sky sky-6"></div>
+
+    <!-- Sun glow -->
+    <div class="sun-glow"></div>
+
+    <!-- Overlay (z-index 1) -->
+    <div class="overlay"></div>
+
+    <!-- Grass (z-index 2 — above overlay) -->
     <div class="grass-wrap" id="grass"></div>
 
-    <!-- Content (frosted glass card) -->
+    <!-- Content (z-index 3) -->
     <div class="content">
 
       <div class="logo">Solace Life</div>

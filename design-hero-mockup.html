@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solace Life — Hero Concept · Living Sky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',-apple-system,sans-serif;color:#4A2418;background:#FFF8F2}
+
+  /* ── FIXED VIDEO HERO — the app's own login sky ── */
+  .sky{position:fixed;inset:0;z-index:0;overflow:hidden;
+       /* fallback if video missing: the app's WARM gradient, slowly drifting */
+       background:linear-gradient(160deg,#FFE3D0,#FFD2CE 45%,#F8C4D8);}
+  .sky video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .sky .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,8,16,.18) 0%,rgba(20,8,16,.05) 40%,rgba(255,248,242,0) 78%,#FFF8F2 100%)}
+
+  /* ── STATIC HERO CONTENT — time and space, unmoving ── */
+  .hero{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px}
+  .hero .brand{font-size:14px;font-weight:700;letter-spacing:.3em;color:#fff;text-transform:uppercase;text-shadow:0 1px 12px rgba(40,10,25,.45);margin-bottom:26px}
+  .hero h1{font-size:clamp(38px,6.4vw,68px);font-weight:800;color:#fff;line-height:1.12;max-width:820px;text-shadow:0 2px 24px rgba(40,10,25,.45)}
+  .hero h1 em{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;color:#FFD9C4}
+  .hero p{margin-top:22px;font-size:clamp(17px,2.3vw,21px);color:rgba(255,255,255,.92);max-width:560px;text-shadow:0 1px 14px rgba(40,10,25,.4)}
+  .hero .ctas{margin-top:38px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .btn{display:inline-block;font-size:17px;font-weight:700;padding:17px 38px;border-radius:18px;text-decoration:none;transition:transform .25s ease}
+  .btn:hover{transform:translateY(-2px)}
+  /* CTA matches the app's login button: WARM gradient #F06292 → #F48A5A → #FFD07A */
+  .btn.primary{background:linear-gradient(90deg,#F06292,#F48A5A,#FFD07A);color:#4A2418;box-shadow:0 10px 30px rgba(244,138,90,.5)}
+  .btn.ghost{background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .hero .hint{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.85);font-size:13px;letter-spacing:.18em;text-transform:uppercase;animation:drift 2.6s ease-in-out infinite}
+  @keyframes drift{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
+
+  /* ── SCROLLING CONTENT — rises over the still sky ── */
+  .flow{position:relative;z-index:2}
+  .glasswrap{max-width:880px;margin:0 auto;padding:0 24px}
+  section.glass-zone{padding:12vh 0}
+  .glass{background:rgba(255,255,255,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+         border:1px solid rgba(255,255,255,.85);border-radius:26px;padding:44px 40px;
+         box-shadow:0 18px 50px rgba(74,36,24,.10);
+         opacity:0;transform:translateY(46px);transition:opacity .8s ease,transform .8s ease}
+  .glass.lit{opacity:1;transform:translateY(0)}
+  .glass .kick{font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#E8763A;margin-bottom:14px}
+  .glass h2{font-size:clamp(26px,3.6vw,36px);font-weight:800;color:#4A2418;line-height:1.2;margin-bottom:14px}
+  .glass h2 em{font-family:'Playfair Display',serif;font-style:italic;font-weight:500;color:#C06A2E}
+  .glass p{font-size:17.5px;color:#8A5A3A;line-height:1.7;max-width:640px}
+  .glass .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:28px}
+  .tile{background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.9);border-radius:18px;padding:22px}
+  .tile .ico{font-size:30px;margin-bottom:10px}
+  .tile h3{font-size:16.5px;font-weight:800;color:#4A2418;margin-bottom:6px}
+  .tile p{font-size:14.5px;color:#8A5A3A;line-height:1.6}
+
+  /* solid ground at the end of the scroll */
+  .ground{position:relative;z-index:2;background:linear-gradient(180deg,#3A2113,#2B1A10);color:#F5CEAA;text-align:center;padding:80px 24px 60px;margin-top:10vh}
+  .ground h2{font-size:clamp(26px,4vw,38px);font-weight:800;color:#fff;margin-bottom:14px}
+  .ground p{font-size:17px;max-width:520px;margin:0 auto 30px;color:#D9A87C}
+  .ground .foot{margin-top:54px;font-size:13px;color:#A87A52;line-height:1.7}
+
+  /* Wren's spec note */
+  .spec{position:relative;z-index:2;background:#0d0d0d;color:#aaa;padding:30px 24px;font-size:14px;line-height:1.7}
+  .spec .glasswrap{max-width:880px}
+  .spec b{color:#fff}
+</style>
+</head>
+<body>
+
+<!-- The sky: fixed, eternal, unmoving while everything else passes over it -->
+<div class="sky">
+  <video autoplay muted loop playsinline poster="">
+    <source src="assets/videos/sky_background.mp4" type="video/mp4">
+  </video>
+  <div class="scrim"></div>
+</div>
+
+<!-- Static hero: time and space -->
+<div class="hero">
+  <div class="brand">Solace Life</div>
+  <h1>Some things should<br><em>outlive the clock.</em></h1>
+  <p>Your voice. Your stories. Your love — delivered to the people who matter, on the days that matter, long after today.</p>
+  <div class="ctas">
+    <a class="btn primary" href="#">Begin Your Legacy</a>
+    <a class="btn ghost" href="#">See how it works</a>
+  </div>
+  <div class="hint">Scroll ↓</div>
+</div>
+
+<!-- Content rises over the still sky -->
+<div class="flow">
+
+  <section class="glass-zone"><div class="glasswrap">
+    <div class="glass">
+      <div class="kick">Record in minutes</div>
+      <h2>A story, a recipe, <em>the way you laugh.</em></h2>
+      <p>Voice, video, or written word — no technical skill required. Big buttons, plain language, built for grandparents first. The same warm world you'll find the moment you open the app.</p>
+    </div>
+  </div></section>
+
+  <section class="glass-zone"><div class="glasswrap">
+    <div class="glass">
+      <div class="kick">Delivered on the days that matter</div>
+      <h2>A wedding. A fiftieth. <em>A Tuesday that needed you.</em></h2>
+      <p>Messages arrive exactly when you intended — this Sunday, next Christmas, or a day far in the future. Scheduled once, delivered faithfully, for decades.</p>
+      <div class="row">
+        <div class="tile"><div class="ico">🎂</div><h3>Birthdays</h3><p>Every year, your voice arrives first.</p></div>
+        <div class="tile"><div class="ico">💍</div><h3>Weddings</h3><p>Present on the day, whatever the day brings.</p></div>
+        <div class="tile"><div class="ico">🕊️</div><h3>After you're gone</h3><p>Released only to the people you chose.</p></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="glass-zone"><div class="glasswrap">
+    <div class="glass">
+      <div class="kick">One place your family can find</div>
+      <h2>Organised for the people <em>who'll need it most.</em></h2>
+      <p>An optional secure vault keeps copies of important information — medical, legal, financial — shared only with the family members you choose, section by section. Solace Life is not a will: it shares copies of information only, and transfers nothing you own.</p>
+    </div>
+  </div></section>
+
+</div>
+
+<!-- Solid ground -->
+<div class="ground">
+  <h2>Pay while you live. Your family never pays.</h2>
+  <p>$99 a year preserves everything — and after you're gone, your memories stay with your family at no cost to them, guaranteed for 25+ years.</p>
+  <a class="btn primary" href="#">Begin Your Legacy</a>
+  <div class="foot">Solace Life · Vancouver, BC · solacelife.ca<br>Shares copies of documents and information only. Not a legal will.</div>
+</div>
+
+<div class="spec"><div class="glasswrap">
+  <b>Wren's production notes:</b> the hero uses the app's actual login video (assets/videos/sky_background.mp4) so install-day feels like coming home — for production, compress to ~3MB H.264 + WebM, add a poster frame, and honor prefers-reduced-motion by swapping to the WARM gradient (already the built-in fallback). Glass panels: 72% white, 18px blur, 26px radius. The sky never moves with the scroll — that's the point. Time passes over it; it stays.
+</div></div>
+
+<script>
+  // Scroll-triggered rise: panels light up as they enter the viewport
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) e.target.classList.add('lit');
+  }), { threshold: 0.18 });
+  document.querySelectorAll('.glass').forEach(el => io.observe(el));
+  // Respect reduced motion: show everything, stop the video
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.glass').forEach(el => el.classList.add('lit'));
+    const v = document.querySelector('video'); if (v) { v.pause(); v.remove(); }
+  }
+</script>
+</body>
+</html>
