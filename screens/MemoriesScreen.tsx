@@ -351,16 +351,6 @@ export default function MemoriesScreen({ navigation, route }: any) {
     return () => loops.forEach(l => l.stop())
   }, [])
 
-  // ── Video upload bar animation ────────────────────────────────────────────
-  useEffect(() => {
-    Animated.timing(videoBarAnim, {
-      toValue: videoUploadPct / 100,
-      duration: 350,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: false,
-    }).start()
-  }, [videoUploadPct])
-
   // ── Glow burst — press animation for each Moments card ──
   const glowAnims = useRef(
     MEMORY_TYPES.map(() => ({
@@ -386,7 +376,6 @@ export default function MemoriesScreen({ navigation, route }: any) {
   const [uploadingVideo, setUploadingVideo]   = useState(false)
   const [videoMsg, setVideoMsg]               = useState('')
   const [videoUploadPct, setVideoUploadPct]   = useState(0)
-  const videoBarAnim = useRef(new Animated.Value(0)).current
   const [videoDuration, setVideoDuration]     = useState(0)
   const [viewVideoItem, setViewVideoItem]     = useState<any>(null)
   const [videoSignedUrl, setVideoSignedUrl]   = useState<string | null>(null)
@@ -3308,12 +3297,14 @@ export default function MemoriesScreen({ navigation, route }: any) {
                           <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '500' }}>Saving to Memories...</Text>
                           <Text style={{ color: '#FFD07A', fontSize: 11, fontWeight: '600' }}>{videoUploadPct}%</Text>
                         </View>
-                        <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 3, overflow: 'hidden' }}>
-                          <Animated.View style={{
+                        <View style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 4, overflow: 'hidden' }}>
+                          {/* Width driven directly by upload state — same source as the % text,
+                              so the bar can never disagree with the number */}
+                          <View style={{
                             height: '100%',
-                            borderRadius: 3,
+                            borderRadius: 4,
                             overflow: 'hidden',
-                            width: videoBarAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                            width: `${Math.max(videoUploadPct, 2)}%`,
                           }}>
                             <LinearGradient
                               colors={['#F06292', '#FFD07A']}
@@ -3321,7 +3312,7 @@ export default function MemoriesScreen({ navigation, route }: any) {
                               end={{ x: 1, y: 0 }}
                               style={{ flex: 1 }}
                             />
-                          </Animated.View>
+                          </View>
                         </View>
                       </View>
                     ) : videoMsg ? (
