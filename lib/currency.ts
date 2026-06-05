@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════════════════════════
 //  SOLACE LIFE — Currency Detection & Price Display
 //
-//  Two plans, same nominal price in USD and CAD:
-//    Annual  → $49 /year
-//    Legacy  → $149 /year
+//  ONE plan (June 2026 model, VC panel v3 unanimous):
+//    Annual → $99 /year while living.
+//    After a confirmed passing the account enters legacy mode at
+//    no cost to family — guaranteed 25+ years, export anytime.
 //
 //  Currency detection is used for the display label only (USD / CAD).
-//  Both currencies charge the same dollar amount — simplified pricing
-//  per A Team unanimous decision (May 2026).
+//  Both currencies charge the same dollar amount.
 // ═══════════════════════════════════════════════════════════════
 
 import * as Localization from 'expo-localization'
@@ -56,8 +56,7 @@ export interface PlanPrice {
 
 // Prices are identical in USD and CAD — same nominal amount, different label.
 const PRICES: Record<string, PlanPrice> = {
-  annual: { display: '$49',  period: '/year',    amount: 49,  label: '' },
-  legacy: { display: '$149', period: 'one-time', amount: 149, label: '' },
+  annual: { display: '$99', period: '/year', amount: 99, label: '' },
 }
 
 /**

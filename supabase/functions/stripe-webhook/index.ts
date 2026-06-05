@@ -24,10 +24,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 // Amount-to-plan fallback — used if metadata.plan is absent.
-// Amounts in cents.
+// Amounts in cents. Legacy amounts kept for historical webhook replays.
 const AMOUNT_TO_PLAN: Record<number, string> = {
-  4900:  'annual',  // $49/year  recurring
-  14900: 'legacy',  // $149      one-time lifetime
+  9900:  'annual',  // $99/year recurring (current, June 2026)
+  4900:  'annual',  // $49/year — retired price, kept for replay safety
+  14900: 'legacy',  // $149 one-time — retired tier, kept for replay safety
 }
 
 Deno.serve(async (req) => {

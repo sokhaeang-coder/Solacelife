@@ -756,7 +756,7 @@
       </p>
       <a href="#founding" class="btn-hero">Claim your founding spot</a>
       <p style="margin-top:18px; font-size:0.78rem; color:rgba(255,255,255,0.85); letter-spacing:0.04em; text-shadow:0 1px 10px rgba(40,10,25,0.4);">
-        $99 USD for US families &nbsp;&middot;&nbsp; $99 CAD for Canadian families &nbsp;&middot;&nbsp; First 100 only
+        $99/year &mdash; your family never pays after you're gone &nbsp;&middot;&nbsp; First 100 founding families lock the rate for life
       </p>
     </div>
 
@@ -920,13 +920,13 @@
 
       <div class="offer-card">
         <div class="offer-price-row">
-          <div class="offer-was" id="offerWas">$299 CAD</div>
+          <div class="offer-was" id="offerWas">Founding rate — locked for life</div>
         </div>
         <div class="offer-price-row">
           <div class="offer-price"><sup>$</sup>99</div>
-          <div class="offer-currency" id="offerCurrency">CAD &middot; one-time</div>
+          <div class="offer-currency" id="offerCurrency">CAD &middot; per year</div>
         </div>
-        <p class="offer-note">No subscription. No renewal. No surprises.</p>
+        <p class="offer-note">One membership. Your family never pays to receive what you leave them — ever.</p>
 
         <!-- Currency badge -->
         <div id="currencyBadge" style="display:inline-block; margin-bottom:20px; font-size:0.75rem; padding:5px 14px; border-radius:50px; border:1px solid rgba(245,206,170,0.25); color:#A87A52; letter-spacing:0.06em;">
@@ -934,24 +934,24 @@
         </div>
 
         <ul class="offer-includes" aria-label="What's included">
-          <li>Lifetime vault — yours and your family's, forever</li>
+          <li>After your passing, everything stays with your family — at no cost to them, guaranteed 25+ years</li>
           <li>Unlimited moments — voice, video, written &amp; photos</li>
           <li>Unlimited family members</li>
           <li>Scheduled delivery for any occasion, any date</li>
-          <li>Founding member status — recognised in the app always</li>
+          <li>Founding member status — your $99/year rate locked for life</li>
           <li>Direct line to the founder</li>
         </ul>
 
         <!--
           STRIPE PAYMENT LINKS — replace both placeholders when ready:
-          USD link: create a $99.00 USD one-time product in Stripe → copy Payment Link URL
-          CAD link: create a $99.00 CAD one-time product in Stripe → copy Payment Link URL
+          USD link: create a $99.00 USD / YEAR subscription price in Stripe → copy Payment Link URL
+          CAD link: create a $99.00 CAD / YEAR subscription price in Stripe → copy Payment Link URL
         -->
         <a href="#"
            id="offerBtn"
            class="btn-offer"
-           data-usd-href="https://buy.stripe.com/test_7sY6oz79g2jb9YE2IY9bO00"
-           data-cad-href="https://buy.stripe.com/test_3cIbITeBIe1Tgn2abq9bO01"
+           data-usd-href="https://buy.stripe.com/test_cNiaEP65cbTLc6M1EU9bO03"
+           data-cad-href="https://buy.stripe.com/test_7sY28jfFM1f7eeU83i9bO02"
            aria-label="Claim founding member spot">
           Claim my founding spot
         </a>
@@ -1043,23 +1043,23 @@
       ]
 
       function applyCAD() {
-        document.getElementById('offerWas').textContent       = '$299 CAD'
-        document.getElementById('offerCurrency').innerHTML    = 'CAD &middot; one-time'
+        document.getElementById('offerWas').textContent       = 'Founding rate — locked for life'
+        document.getElementById('offerCurrency').innerHTML    = 'CAD &middot; per year'
         document.getElementById('currencyBadge').textContent  = 'Priced in Canadian dollars'
         var btn = document.getElementById('offerBtn')
         var cadHref = btn.getAttribute('data-cad-href')
         if (cadHref && cadHref !== 'REPLACE_WITH_STRIPE_CAD_PAYMENT_LINK') btn.href = cadHref
-        btn.setAttribute('aria-label', 'Claim founding member spot for $99 CAD')
+        btn.setAttribute('aria-label', 'Claim founding member spot for $99 CAD per year')
       }
 
       function applyUSD() {
-        document.getElementById('offerWas').textContent       = '$299 USD'
-        document.getElementById('offerCurrency').innerHTML    = 'USD &middot; one-time'
+        document.getElementById('offerWas').textContent       = 'Founding rate — locked for life'
+        document.getElementById('offerCurrency').innerHTML    = 'USD &middot; per year'
         document.getElementById('currencyBadge').textContent  = 'Priced in US dollars'
         var btn = document.getElementById('offerBtn')
         var usdHref = btn.getAttribute('data-usd-href')
         if (usdHref && usdHref !== 'REPLACE_WITH_STRIPE_USD_PAYMENT_LINK') btn.href = usdHref
-        btn.setAttribute('aria-label', 'Claim founding member spot for $99 USD')
+        btn.setAttribute('aria-label', 'Claim founding member spot for $99 USD per year')
       }
 
       function fallbackByTimezone() {

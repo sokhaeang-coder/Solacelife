@@ -1,12 +1,13 @@
 // ═══════════════════════════════════════════════════════════════
 //  SOLACE LIFE — Create Stripe Checkout Session
-//  v4 — Clean two-plan model (May 2026)
+//  v5 — Single-plan model (June 2026)
 //
-//  Plans:
-//    annual  → $49/year recurring, 30-day free trial (USD or CAD)
-//    legacy  → $149 one-time lifetime payment          (USD or CAD)
+//  ONE plan:
+//    annual → $99/year recurring, 30-day free trial (USD or CAD).
+//    After a confirmed passing the account enters legacy mode at
+//    no cost to family — 25+ years guaranteed.
 //
-//  No monthly billing. No bundles. No add-ons.
+//  No monthly billing. No lifetime tier (under evaluation). No add-ons.
 // ═══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -16,21 +17,13 @@ const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 // ── Stripe Price IDs ─────────────────────────────────────────
-// Create four price objects in Stripe Dashboard:
-//   Annual USD:  $49/year  → STRIPE_PRICE_ANNUAL_USD
-//   Annual CAD:  $49/year  → STRIPE_PRICE_ANNUAL_CAD
-//   Legacy USD:  $149/year → STRIPE_PRICE_LEGACY_USD
-//   Legacy CAD:  $149/year → STRIPE_PRICE_LEGACY_CAD
+// Two price objects in Stripe Dashboard (product: "Solace Life Annual"):
+//   Annual USD: $99/year → STRIPE_PRICE_ANNUAL_USD
+//   Annual CAD: $99/year → STRIPE_PRICE_ANNUAL_CAD
 // Add each as a Supabase Edge Function secret.
 const PRICE_IDS: Record<string, Record<string, string>> = {
-  usd: {
-    annual: Deno.env.get('STRIPE_PRICE_ANNUAL_USD') ?? 'price_annual_usd_dev',
-    legacy: Deno.env.get('STRIPE_PRICE_LEGACY_USD') ?? 'price_legacy_usd_dev',
-  },
-  cad: {
-    annual: Deno.env.get('STRIPE_PRICE_ANNUAL_CAD') ?? 'price_annual_cad_dev',
-    legacy: Deno.env.get('STRIPE_PRICE_LEGACY_CAD') ?? 'price_legacy_cad_dev',
-  },
+  usd: { annual: Deno.env.get('STRIPE_PRICE_ANNUAL_USD') ?? 'price_annual_usd_dev' },
+  cad: { annual: Deno.env.get('STRIPE_PRICE_ANNUAL_CAD') ?? 'price_annual_cad_dev' },
 }
 
 // ── Return URLs ───────────────────────────────────────────────

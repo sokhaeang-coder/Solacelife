@@ -1223,3 +1223,4 @@ The full Solace Life concept was articulated for the first time:
 | Four off-brand emails | deliver-time-capsules (families see this one!), send-emergency-reminders, process-checkins, test-email-delivery — still old styling | Before testers schedule deliveries |
 | TOS placeholders | 25-yr availability + lapse-state sections await final pricing; BC counsel review before GA | Pre-GA |
 | Incorporation → CRRP + SR&ED | One incorporation unlocks CRRP org enrollment (care homes) and SR&ED claim (35% refundable) | ASAP — SR&ED deadline is hard at 18 months |
+| **Stripe live-mode switch** | Entire Stripe setup (product, $99/yr USD+CAD prices, payment links, price-ID secrets) currently in TEST mode — intentional for beta, no real charges possible. Before GA: toggle dashboard to live mode, recreate product/prices/links, re-set supabase secrets, re-patch landing page links, redeploy checkout functions. | Before App Store GA / first real sale |

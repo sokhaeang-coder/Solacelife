@@ -22,34 +22,18 @@ import { useNavScale, type NavScaleOption } from '../lib/NavScaleContext'
 const PLANS = [
   {
     key: 'annual',
-    label: 'Annual',
-    tagline: 'Share your story with the people who matter most',
+    label: 'Solace Life',
+    tagline: 'One membership — your family never pays to receive what you leave them.',
     icon: '💌',
-    badge: 'Start Free',
+    badge: '30 Days Free',
     highlight: false,
     features: [
-      'Unlimited written messages',
-      'Up to 5 family members',
-      'Scheduled delivery',
-      'Trusted contact notifications',
-      '10 GB secure storage',
-    ],
-  },
-  {
-    key: 'legacy',
-    label: 'Legacy',
-    tagline: 'Complete peace of mind — for you and everyone you love',
-    icon: '🛡️',
-    badge: 'Most Popular',
-    highlight: true,
-    features: [
-      'Everything in Annual',
-      'Video & voice messages',
+      'Unlimited moments — voice, video, written & photos',
       'Unlimited family members',
-      'Estate planning hub',
-      '180-day protected delivery for your family',
-      '5-year family archive',
-      '100 GB secure storage',
+      'Scheduled delivery for any occasion, any date',
+      'Secure vault with per-person sharing',
+      'Trusted contact & check-in protection',
+      'After your passing: stays with your family at no cost, 25+ years guaranteed',
     ],
   },
 ]
@@ -1507,7 +1491,7 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={{ flex: 1 }}>
                   <Text style={[s.upgradeModalTitle, { color: '#3D1020' }]}>💌 Choose Your Plan</Text>
                   <Text style={[s.pageSubtitle, { marginTop: 2, color: '#7A3448' }]}>
-                    Annual {currencyTag(currency)} $49/yr · Legacy {currencyTag(currency)} $149 one-time
+                    One plan — {currencyTag(currency)} $99/year. Receiving is always free for your family.
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowUpgrade(false)}>
@@ -1645,33 +1629,6 @@ export default function SettingsScreen({ navigation }: any) {
                   )
                 })}
 
-                {/* ── Upgrade nudge for Annual subscribers ── */}
-                {subscriptionTier === 'annual' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
-                  <View style={{
-                    marginHorizontal: 16, marginTop: 4, marginBottom: 10,
-                    padding: 14, borderRadius: 14,
-                    backgroundColor: 'rgba(255,255,255,0.55)', borderWidth: 1, borderColor: 'rgba(61,16,32,0.15)',
-                  }}>
-                    <Text style={{ color: '#3D1020', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
-                      ✨ Upgrade to Legacy anytime
-                    </Text>
-                    <Text style={{ color: '#7A3448', fontSize: 12, lineHeight: 17 }}>
-                      Unlock video & voice messages, unlimited family members, and the full estate planning hub — one payment of {currencyTag(currency)} $149, yours forever.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleUpgrade('legacy')}
-                      disabled={checkoutLoading}
-                      activeOpacity={0.85}
-                      style={{ marginTop: 12 }}>
-                      <LinearGradient colors={PLUM} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.btnPrimary, { paddingVertical: 11 }]}>
-                        {checkoutLoading
-                          ? <ActivityIndicator color="#fff" />
-                          : <Text style={[s.btnPrimaryText, { color: '#fff', fontSize: 14 }]}>Get Legacy — {currencyTag(currency)} $149 one-time</Text>}
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 {/* ── Continuity explainer ── */}
                 <View style={{
                   marginHorizontal: 16, marginTop: 8, marginBottom: 8,
@@ -1682,8 +1639,8 @@ export default function SettingsScreen({ navigation }: any) {
                     💛 Your love keeps showing up
                   </Text>
                   <Text style={{ color: '#7A3448', fontSize: 13, lineHeight: 19 }}>
-                    If your vault is ever shared with your family, Solace keeps everything running — no interruptions. Every paid plan includes a{' '}
-                    <Text style={{ color: '#3D1020', fontWeight: '600' }}>180-day protected window</Text> so your scheduled messages arrive exactly as you planned. Your family gets everything you prepared for them. They never touch a billing screen.
+                    After your passing, your account stays with your family at{' '}
+                    <Text style={{ color: '#3D1020', fontWeight: '600' }}>no cost to them — guaranteed for 25+ years</Text>. Scheduled messages keep arriving exactly as you planned, and everything can be exported anytime. Your family never touches a billing screen.
                   </Text>
                 </View>
 
