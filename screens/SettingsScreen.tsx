@@ -44,6 +44,7 @@ export default function SettingsScreen({ navigation }: any) {
   const { navScale, setNavScale } = useNavScale()
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [paymentResult,   setPaymentResult]   = useState<'success' | 'cancel' | null>(null)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
 
   useEffect(() => {
     // Native: deep link handler
@@ -796,9 +797,12 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={s.chevron}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.listRow} activeOpacity={0.75}>
+        <TouchableOpacity style={s.listRow} activeOpacity={0.75} onPress={() => setShowPrivacyModal(true)}>
           <View style={s.listIconWrap}><Text style={s.listIcon}>🔒</Text></View>
-          <View style={s.listInfo}><Text style={s.listLabel}>Privacy & Security</Text></View>
+          <View style={s.listInfo}>
+            <Text style={s.listLabel}>Privacy & Security</Text>
+            <Text style={s.listDesc}>How your information is protected</Text>
+          </View>
           <Text style={s.chevron}>›</Text>
         </TouchableOpacity>
 
@@ -1477,6 +1481,64 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* ── Privacy & Security Modal ── */}
+      <Modal visible={showPrivacyModal} transparent animationType="slide" onRequestClose={() => setShowPrivacyModal(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <LinearGradient colors={WARM} style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
+
+            <Text style={{ color: '#3D1020', fontSize: 20, fontWeight: '700' }}>🔒 Privacy & Security</Text>
+            <Text style={{ color: '#7A3448', fontSize: 14, marginTop: 4, marginBottom: 14, lineHeight: 20 }}>
+              Your memories are precious. Here's exactly how we protect them — in plain words.
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={true} style={{ flexGrow: 0 }}>
+              {[
+                ['🗝️', 'Your space is yours alone', 'No one — not family, not us — can see what you save unless you choose to share it. Each section of your vault is shared only with the people you pick.'],
+                ['🔐', 'Sensitive details are locked on your phone', 'Passwords and private notes are encrypted on your device before they ever leave it. We could not read them if we tried.'],
+                ['✉️', 'Sharing always asks first', 'Trusted contacts must accept their role by email before it takes effect. Nothing is shared silently.'],
+                ['📜', 'Solace Life is not a will', 'It shares copies of documents and information only. It never gives away money, property, or belongings.'],
+                ['📦', 'Your information is never sold', 'No ads, no data sales, ever. You can export everything — or delete everything — whenever you wish.'],
+              ].map(([icon, title, body], i) => (
+                <View key={i} style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(255,255,255,0.5)',
+                  borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', gap: 12 }}>
+                  <Text style={{ fontSize: 24 }}>{icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#3D1020', fontSize: 15, fontWeight: '700', marginBottom: 3 }}>{title}</Text>
+                    <Text style={{ color: '#7A3448', fontSize: 13.5, lineHeight: 19 }}>{body}</Text>
+                  </View>
+                </View>
+              ))}
+
+              {/* Legal documents */}
+              <TouchableOpacity activeOpacity={0.8} onPress={() => Linking.openURL('https://solacelife.ca/privacy.html')}
+                accessibilityRole="link" accessibilityLabel="Open the full Privacy Policy">
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1,
+                  borderRadius: 14, padding: 16, marginBottom: 10, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: '#3D1020', fontSize: 16, fontWeight: '700' }}>📄  Privacy Policy</Text>
+                  <Text style={{ color: '#7A3448', fontSize: 18 }}>›</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => Linking.openURL('https://solacelife.ca/terms.html')}
+                accessibilityRole="link" accessibilityLabel="Open the full Terms of Service">
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1,
+                  borderRadius: 14, padding: 16, marginBottom: 10, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: '#3D1020', fontSize: 16, fontWeight: '700' }}>📋  Terms of Service</Text>
+                  <Text style={{ color: '#7A3448', fontSize: 18 }}>›</Text>
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
+
+            <TouchableOpacity activeOpacity={0.85} style={{ marginTop: 8, marginBottom: 6 }} onPress={() => setShowPrivacyModal(false)}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.78)', borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1,
+                borderRadius: 14, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}>
+                <Text style={{ color: '#3D1020', fontSize: 16, fontWeight: '600' }}>Close</Text>
+              </View>
+            </TouchableOpacity>
+
+          </LinearGradient>
+        </View>
       </Modal>
 
       {/* ── Plan Upgrade Modal (v4 — warm gradient) ── */}
