@@ -239,6 +239,7 @@ export default function FamilyScreen() {
   // ── Occasion suggestion state ──────────────────────────────────────────────
   const [showOccasionSuggest, setShowOccasionSuggest]   = useState(false)
   const [suggestMember, setSuggestMember]               = useState<{ name: string; relationship: string; isUpdate?: boolean } | null>(null)
+  const [showFounderModal, setShowFounderModal]         = useState(false)
   const [originalRelationship, setOriginalRelationship] = useState('')
   const [suggestAllKeys, setSuggestAllKeys]             = useState<string[]>([])
   const [suggestSelections, setSuggestSelections]       = useState<Set<string>>(new Set())
@@ -1177,7 +1178,9 @@ export default function FamilyScreen() {
                   <Text style={{ color: C.grey, fontSize: 11, fontWeight: '700',
                     letterSpacing: 1.2, textTransform: 'uppercase' }}>From the Founder</Text>
                 </View>
-                {/* Gradient border card */}
+                {/* Gradient border card — tap opens the founder profile */}
+                <TouchableOpacity activeOpacity={0.85} onPress={() => setShowFounderModal(true)}
+                  accessibilityRole="button" accessibilityLabel="Open Sokha's profile">
                 <LinearGradient
                   colors={['#F06292', '#F48A5A', '#FFD07A']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1222,6 +1225,7 @@ export default function FamilyScreen() {
                     </View>
                   </View>
                 </LinearGradient>
+                </TouchableOpacity>
               </View>
             ) : null}
 
@@ -2028,6 +2032,76 @@ export default function FamilyScreen() {
       </Modal>
 
       {/* ── Delete Confirmation ─────────────────────────────────────────────── */}
+      {/* ── Founder profile modal ── */}
+      <Modal visible={showFounderModal} transparent animationType="slide"
+        onRequestClose={() => setShowFounderModal(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <LinearGradient colors={WARM} style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+
+            {/* Header: photo + name */}
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+              <View style={{ width: 96, height: 96, borderRadius: 48, borderWidth: 3,
+                borderColor: WM.accent, overflow: 'hidden', marginBottom: 10 }}>
+                <Image source={FOUNDER_PHOTO} style={{ width: 96, height: 96 }} resizeMode="cover" />
+              </View>
+              <Text style={{ color: WM.title, fontSize: 22, fontWeight: '800' }}>Sokha Eang</Text>
+              <View style={{ marginTop: 6, backgroundColor: WM.accentBg, borderRadius: 20,
+                borderWidth: 1, borderColor: WM.accent, paddingHorizontal: 12, paddingVertical: 4 }}>
+                <Text style={{ color: WM.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }}>FOUNDER · SOLACE LIFE</Text>
+              </View>
+            </View>
+
+            {/* Story */}
+            <View style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1,
+              borderRadius: 14, padding: 16, marginBottom: 12 }}>
+              <Text style={{ color: WM.title, fontSize: 15, lineHeight: 23 }}>
+                I built Solace Life after realising the people we love most never hear the
+                things we mean to say. My own family came first — yours is why it keeps growing.
+                {'\n\n'}I'm here as your first contact while you settle in. Questions, ideas,
+                or something confusing? That's exactly what I want to hear about.
+              </Text>
+            </View>
+
+            {/* Privacy note */}
+            <View style={{ backgroundColor: WM.cardBgAlt, borderColor: WM.border, borderWidth: 1,
+              borderRadius: 12, padding: 12, marginBottom: 16 }}>
+              <Text style={{ color: WM.sub, fontSize: 13, lineHeight: 19 }}>
+                🔒 Your space stays yours: I can't see anything you record or save unless you
+                choose to send it to me.
+              </Text>
+            </View>
+
+            {/* Say hello */}
+            <TouchableOpacity activeOpacity={0.85}
+              onPress={() => Linking.openURL('mailto:sokhaeang@gmail.com?subject=Hello%20from%20a%20Solace%20Life%20member')}>
+              <View style={{ backgroundColor: WM.accent, borderRadius: 14, padding: 16,
+                alignItems: 'center', minHeight: 52, justifyContent: 'center' }}>
+                <Text style={{ color: WM.title, fontSize: 16, fontWeight: '700' }}>✉️  Say hello to Sokha</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Remove */}
+            <TouchableOpacity activeOpacity={0.85} style={{ marginTop: 10 }}
+              onPress={() => { setShowFounderModal(false); setConfirmDelete(founderMember) }}>
+              <View style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1,
+                borderRadius: 14, padding: 14, alignItems: 'center' }}>
+                <Text style={{ color: WM.sub, fontSize: 14 }}>Remove from my family page</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Close */}
+            <TouchableOpacity activeOpacity={0.85} style={{ marginTop: 10, marginBottom: 6 }}
+              onPress={() => setShowFounderModal(false)}>
+              <View style={{ backgroundColor: WM.cardBg, borderColor: WM.border, borderWidth: 1,
+                borderRadius: 14, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}>
+                <Text style={{ color: WM.title, fontSize: 16, fontWeight: '600' }}>Close</Text>
+              </View>
+            </TouchableOpacity>
+
+          </LinearGradient>
+        </View>
+      </Modal>
+
       <Modal visible={!!confirmDelete} transparent animationType="fade"
         onRequestClose={() => { setConfirmDelete(null); setDeleteConfirmText('') }}>
         <TouchableOpacity style={s.confirmOverlay} activeOpacity={1} onPress={() => { setConfirmDelete(null); setDeleteConfirmText('') }}>
