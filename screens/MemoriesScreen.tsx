@@ -376,6 +376,7 @@ export default function MemoriesScreen({ navigation, route }: any) {
   const [uploadingVideo, setUploadingVideo]   = useState(false)
   const [videoMsg, setVideoMsg]               = useState('')
   const [videoUploadPct, setVideoUploadPct]   = useState(0)
+  const [videoUploadMb, setVideoUploadMb]     = useState<{ done: number; total: number } | null>(null)
   const [videoDuration, setVideoDuration]     = useState(0)
   const [viewVideoItem, setViewVideoItem]     = useState<any>(null)
   const [videoSignedUrl, setVideoSignedUrl]   = useState<string | null>(null)
@@ -1502,8 +1503,10 @@ export default function MemoriesScreen({ navigation, route }: any) {
         offset += chunkSize
         const pct = Math.round(Math.min((offset / fileSize) * 100, 100))
         setVideoUploadPct(pct)
+        setVideoUploadMb({ done: Math.min(offset, fileSize) / 1048576, total: fileSize / 1048576 })
       }
       setVideoUploadPct(0)
+      setVideoUploadMb(null)
       setVideoMsg('')
 
       const { data: newVideoMem, error: dbErr } = await supabase.from('memories').insert({
@@ -3294,7 +3297,11 @@ export default function MemoriesScreen({ navigation, route }: any) {
                     {uploadingVideo && videoUploadPct > 0 ? (
                       <View style={{ backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '500' }}>Saving to Memories...</Text>
+                          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '500' }}>
+                            {videoUploadMb
+                              ? `Saving... ${Math.round(videoUploadMb.done)} of ${Math.round(videoUploadMb.total)} MB`
+                              : 'Saving to Memories...'}
+                          </Text>
                           <Text style={{ color: '#FFD07A', fontSize: 11, fontWeight: '600' }}>{videoUploadPct}%</Text>
                         </View>
                         <View style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 4, overflow: 'hidden' }}>
