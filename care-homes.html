@@ -37,6 +37,16 @@
   .card .ico{font-size:30px;margin-bottom:8px}
   .card h3{font-size:17px;color:var(--espresso);margin-bottom:6px}
   .card p{font-size:15px;color:var(--sienna)}
+  /* APP SHOWCASE — tilted phone pair */
+  .show{display:flex;flex-wrap:wrap;gap:44px;align-items:center}
+  .show .copy{flex:1;min-width:280px}
+  .beta-pill{display:inline-block;background:var(--accent-bg);border:1px solid rgba(232,118,58,.35);color:var(--accent);font-weight:700;font-size:13px;padding:6px 14px;border-radius:20px;margin-bottom:12px}
+  .phones{flex:1;min-width:300px;display:flex;justify-content:center;align-items:center;padding:26px 0}
+  .phone{width:198px;border-radius:34px;border:7px solid #2B1A10;background:#2B1A10;box-shadow:0 24px 60px rgba(74,36,24,.35);overflow:hidden}
+  .phone img{display:block;width:100%}
+  .phone.back{transform:rotate(-7deg) translateY(16px);z-index:1}
+  .phone.front{transform:rotate(5deg);z-index:2;margin-left:-46px}
+  @media (max-width:560px){ .phone{width:160px} .phone.front{margin-left:-34px} }
   /* SAFEGUARDS */
   .safe{background:var(--accent-bg)}
   .safe-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:8px}
@@ -118,6 +128,22 @@
       <div class="card"><div class="ico">📅</div><h3>Delivered on the days that matter</h3><p>Messages arrive on a granddaughter's wedding day, a son's 50th birthday — for years to come.</p></div>
       <div class="card"><div class="ico">🔐</div><h3>One organised place for family</h3><p>An optional vault keeps copies of important information where family can find it — shared only with people the resident chooses.</p></div>
       <div class="card"><div class="ico">👨‍👩‍👧</div><h3>Built for this generation</h3><p>Big buttons, plain words, clinical-language review behind every screen. Designed with seniors, not just for them.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- APP SHOWCASE -->
+<section>
+  <div class="wrap show">
+    <div class="copy">
+      <span class="beta-pill">App in beta — refining with our first senior testers</span>
+      <h2>What your residents will see</h2>
+      <p class="lead">Big buttons. Plain words. One thing at a time. Solace Life is designed for hands that have held more rotary phones than smartphones — and it looks like a place memories belong.</p>
+      <p style="font-size:15.5px;color:var(--sienna)">Every screen is reviewed for senior accessibility: large type, high contrast, generous touch targets, and nothing hidden behind gestures.</p>
+    </div>
+    <div class="phones">
+      <div class="phone back"><img src="assets/screens/vault.jpg" alt="My Vault screen with large category tiles: Precious, Messages, Legal, Financial, Medical, Property, and Passwords" loading="lazy"></div>
+      <div class="phone front"><img src="assets/screens/welcome.jpg" alt="Solace Life welcome screen over a sunset ocean — Preserve what matters most" loading="lazy"></div>
     </div>
   </div>
 </section>
