@@ -1208,3 +1208,18 @@ The full Solace Life concept was articulated for the first time:
 | May 18 | Emergency email, partner page | Emergency email confirmed in inbox |
 | May 19 | GitHub push, investor deck | Code on GitHub for first time |
 | May 20 | Video fix, delivery tested | **First memory delivered end-to-end** ✅ |
+
+---
+
+## Roadmap — Parked Items (as of June 5, 2026)
+
+| Item | What it is | Trigger to build |
+|---|---|---|
+| **Grace Window recording screen** | Custom in-app video recorder (expo-camera): gentle, honest wind-down cue at ~4:15 ("a good place to finish the thought…"), visible end at 5:00, recorder quietly rolls to 5:30 so no senior is ever cut mid-sentence. Replaces the system camera UI, which cannot be overlaid. Founder's concept, refined for honesty (no fake buffering — trust product). | Beta data: if seniors are hitting the 5-min cap in week one, build next sprint |
+| Premium AI Avatar tier | Apex Frontier condition: defined within 120 days of GA | Post-GA |
+| Android version | 55+ outside urban BC skews Android; seniors-home channel will surface it | First seniors-home pilot |
+| Daughter CTA on care-homes page | "I want this for my mom at [facility]" entry point — family-champion funnel | After first 3 director conversations |
+| Compressed landscape video master | ~4MB two-pass encode + landscape sky for desktop hero | Quiet week |
+| Four off-brand emails | deliver-time-capsules (families see this one!), send-emergency-reminders, process-checkins, test-email-delivery — still old styling | Before testers schedule deliveries |
+| TOS placeholders | 25-yr availability + lapse-state sections await final pricing; BC counsel review before GA | Pre-GA |
+| Incorporation → CRRP + SR&ED | One incorporation unlocks CRRP org enrollment (care homes) and SR&ED claim (35% refundable) | ASAP — SR&ED deadline is hard at 18 months |

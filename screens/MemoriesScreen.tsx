@@ -1356,17 +1356,16 @@ export default function MemoriesScreen({ navigation, route }: any) {
       setVideoMsg('📱 Camera recording requires the Solace Life mobile app. Use "Choose from Library" to upload a video file from your computer.')
       return
     }
-    // allowsEditing: true forces UIImagePickerController on iOS (vs PHPicker) which
-    // is required for videoQuality transcoding to actually apply.
-    // videoQuality: 0 (Low ≈480p) keeps files well under Supabase free-tier 50 MB limit.
+    // allowsEditing: true gives seniors a simple trim step before saving.
+    // No videoQuality transcode — native resolution preserved. Supabase Pro
+    // (500 MB upload limit) comfortably fits a 5-minute 1080p recording.
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') { setVideoMsg('Camera permission is required.'); return }
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['videos'],
-        videoMaxDuration: 120,   // 2 min max keeps compressed files under 40 MB
-        allowsEditing: true,
-        videoQuality: 0,         // Low — transcodes to ≈480p before returning URI
+        videoMaxDuration: 300,   // 5 min — Supabase Pro storage, 500 MB upload limit
+        allowsEditing: true,     // lets seniors trim; no videoQuality = native resolution
       } as any)
       if (!result.canceled && result.assets?.[0]) {
         setVideoUri(result.assets[0].uri)
@@ -1384,9 +1383,8 @@ export default function MemoriesScreen({ navigation, route }: any) {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['videos'],
-        videoMaxDuration: 120,   // 2 min max
-        allowsEditing: true,     // required for videoQuality transcoding on iOS
-        videoQuality: 0,         // Low — transcodes to ≈480p, keeps files under 40 MB
+        videoMaxDuration: 300,   // 5 min — Supabase Pro storage, 500 MB upload limit
+        allowsEditing: true,     // lets seniors trim; no videoQuality = native resolution
       } as any)
       if (!result.canceled && result.assets?.[0]) {
         setVideoUri(result.assets[0].uri)
@@ -1426,10 +1424,10 @@ export default function MemoriesScreen({ navigation, route }: any) {
       const sizeInfo = await FileSystem.getInfoAsync(localUri, { size: true })
       const fileSize = sizeInfo.exists ? ((sizeInfo as any).size as number) : 0
 
-      // Hard cap — Supabase free tier enforces a ~50 MB per-file limit
-      if (fileSize > 45 * 1024 * 1024) {
+      // Hard cap — Supabase Pro bucket limit is 500 MB; guard just under it
+      if (fileSize > 450 * 1024 * 1024) {
         const mb = Math.round(fileSize / 1024 / 1024)
-        setVideoMsg(`Video is ${mb} MB after compression — please trim it shorter (2 min max) and try again.`)
+        setVideoMsg(`This video is ${mb} MB — a little too large to save. Please trim it shorter (up to 5 minutes) and try again.`)
         setUploadingVideo(false)
         return
       }
@@ -3248,7 +3246,7 @@ export default function MemoriesScreen({ navigation, route }: any) {
 
                 {!videoUri ? (
                   <View style={s.videoPickWrap}>
-                    <Text style={[s.videoPickHint, { color: '#7A3448' }]}>Record a new video or choose one from your library. Maximum 2 minutes — video is automatically optimised for sharing.</Text>
+                    <Text style={[s.videoPickHint, { color: '#7A3448' }]}>Record a new video or choose one from your library. Up to 5 minutes — plenty of room for the whole story.</Text>
 
                     <TouchableOpacity
                       onPress={recordVideo}
