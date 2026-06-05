@@ -15,6 +15,8 @@ import ScreenWrap from '../components/ScreenWrap'
 import { CalendarPicker } from '../components/CalendarPicker'
 import { refreshEmergencyNotification } from '../lib/emergencyNotification'
 
+const FOUNDER_PHOTO = require('../assets/founder.jpg')
+
 // ─────────────────────────────────────────────────────────────────────────────
 const RELATIONSHIPS = ['Husband', 'Wife', 'Partner', 'Child', 'Mother', 'Father', 'Brother', 'Sister', 'Friend', 'Other']
 
@@ -1188,9 +1190,9 @@ export default function FamilyScreen() {
                       borderRightColor: 'rgba(240,98,146,0.15)', paddingVertical: 22 }}>
                       <View style={{ width: 72, height: 72, borderRadius: 36,
                         backgroundColor: 'rgba(240,98,146,0.2)', borderWidth: 2,
-                        borderColor: '#F06292AA',
+                        borderColor: '#F06292AA', overflow: 'hidden',
                         alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontSize: 32, fontWeight: '800', color: '#F06292' }}>S</Text>
+                        <Image source={FOUNDER_PHOTO} style={{ width: 72, height: 72 }} resizeMode="cover" />
                       </View>
                       {/* Founder badge */}
                       <View style={{ marginTop: 8, backgroundColor: 'rgba(240,98,146,0.18)',
