@@ -729,9 +729,7 @@
   <style>
     .film-hero{ position:relative; height:100svh; min-height:600px; overflow:hidden; background:#0b0712; }
     .film-sky{ position:absolute; inset:0; z-index:0; }
-    .film-sky video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
-      opacity:0; transition:opacity 1s linear; }
-    .film-sky video.show{ opacity:1; }
+    .film-sky video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     /* darken only the LEFT — keep Sandra + the empty chair clear on the right */
     .film-scrim{ position:absolute; inset:0; z-index:1;
       background:linear-gradient(to right, rgba(11,7,18,.72) 0%, rgba(11,7,18,.34) 42%, rgba(11,7,18,0) 66%); }
@@ -818,10 +816,9 @@
   <!-- ── FILM HERO — Sandra's film + waitlist ─────────────────── -->
   <header class="film-hero" role="banner">
     <div class="film-sky" aria-hidden="true">
-      <video id="skyA" muted playsinline preload="auto"
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_3EjfE3PZqa2vd5Dn7e1nfMLvak3/hf_20260606_221306_f898d645-e828-4746-a428-62f175037862.mp4"></video>
-      <video id="skyB" muted playsinline preload="auto"
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_3EjfE3PZqa2vd5Dn7e1nfMLvak3/hf_20260606_221306_f898d645-e828-4746-a428-62f175037862.mp4"></video>
+      <video id="skyA" autoplay muted loop playsinline webkit-playsinline preload="auto"
+        poster="video/hero_poster.jpg"
+        src="video/hero_loop.mp4"></video>
       <div class="film-scrim"></div>
     </div>
 
@@ -1196,22 +1193,13 @@
   <!-- ── FILM HERO: seamless loop, lightbox, Supabase waitlist ── -->
   <script>
     (function(){
-      /* seamless crossfade loop for the hero film */
-      var FADE=0.7, a=document.getElementById('skyA'), b=document.getElementById('skyB');
-      var active=a, idle=b;
-      function arm(v){
-        v.addEventListener('timeupdate', function h(){
-          if(v!==active) return;
-          if(v.duration && v.currentTime >= v.duration-FADE){
-            v.removeEventListener('timeupdate', h);
-            idle.currentTime=0; idle.play(); idle.classList.add('show'); active.classList.remove('show');
-            var prev=active; var t=active; active=idle; idle=t;
-            setTimeout(function(){ prev.pause(); arm(active); }, FADE*1000);
-          }
-        });
+      /* hero film: native loop, iOS-safe autoplay */
+      var sky=document.getElementById('skyA');
+      if(sky){
+        sky.muted = true; sky.setAttribute('muted','');
+        var sp = sky.play();
+        if(sp && sp.catch){ sp.catch(function(){}); }
       }
-      function startSky(){ a.classList.add('show'); var p=a.play(); if(p&&p.then){p.then(function(){arm(a)}).catch(function(){});} else {arm(a);} }
-      if(a.readyState>=2) startSky(); else a.addEventListener('loadeddata', startSky, {once:true});
 
       /* lightbox */
       var lb=document.getElementById('lightbox'), film=document.getElementById('filmVideo');
