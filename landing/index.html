@@ -1,1102 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solace Life — Leave something they'll carry forever</title>
-  <meta name="description" content="Record your voice, your stories, your love — scheduled to reach your family on the days that matter most. Founding member access now open." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* ── LIVING SKY DESIGN TOKENS ───────────────────────────── */
-    :root {
-      --cream:       #FFF8F2;
-      --espresso:    #4A2418;
-      --sienna:      #8A5A3A;
-      --kicker:      #E8763A;
-      --accent-ital: #C06A2E;
-      --glass-bg:    rgba(255,255,255,.72);
-      --glass-brd:   rgba(255,255,255,.85);
-      --glass-shadow: 0 18px 50px rgba(74,36,24,.10);
-      --cta-grad:    linear-gradient(90deg,#F06292,#F48A5A,#FFD07A);
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', -apple-system, sans-serif;
-      background: var(--cream);
-      color: var(--espresso);
-      line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* ── FIXED VIDEO SKY — the app's own login sky ──────────── */
-    .sky {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      overflow: hidden;
-      /* fallback if video missing: the app's WARM gradient */
-      background: linear-gradient(160deg,#FFE3D0,#FFD2CE 45%,#F8C4D8);
-    }
-    .sky video {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .sky .scrim {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg,
-        rgba(20,8,16,.18) 0%,
-        rgba(20,8,16,.05) 40%,
-        rgba(255,248,242,0) 78%,
-        #FFF8F2 100%);
-    }
-
-    /* ── NAV ─────────────────────────────────────────────────── */
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      padding: 20px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .logo {
-      display: inline-flex;
-      align-items: center;
-      text-decoration: none;
-    }
-
-    .logo img {
-      height: 48px;
-      width: auto;
-      /* drop-shadow to keep it visible over any sky colour */
-      filter: drop-shadow(0 1px 8px rgba(40,10,25,0.35));
-    }
-
-    .nav-cta {
-      background: rgba(255,255,255,0.22);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1.5px solid rgba(255,255,255,0.65);
-      color: #fff;
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 9px 20px;
-      border-radius: 50px;
-      text-decoration: none;
-      text-shadow: 0 1px 8px rgba(40,10,25,0.35);
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-
-    .nav-cta:hover { background: rgba(255,255,255,0.32); }
-
-    /* ── HERO — static content over the fixed sky ────────────── */
-    .hero {
-      position: relative;
-      z-index: 1;
-      height: 100svh;
-      min-height: 560px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-
-    .hero-content {
-      position: relative;
-      padding: 0 24px;
-      max-width: 760px;
-    }
-
-    .hero-eyebrow {
-      display: inline-block;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.28em;
-      text-transform: uppercase;
-      color: #fff;
-      text-shadow: 0 1px 12px rgba(40,10,25,.45);
-      margin-bottom: 24px;
-    }
-
-    .hero h1 {
-      font-size: clamp(2.4rem, 6.4vw, 4.2rem);
-      font-weight: 800;
-      line-height: 1.12;
-      color: #fff;
-      letter-spacing: -0.01em;
-      margin-bottom: 28px;
-      text-shadow: 0 2px 24px rgba(40,10,25,0.45);
-    }
-
-    .hero h1 em {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-weight: 500;
-      color: #FFD9C4;
-    }
-
-    .hero-sub {
-      font-size: clamp(1.05rem, 2.3vw, 1.25rem);
-      color: rgba(255,255,255,0.92);
-      max-width: 540px;
-      margin: 0 auto 40px;
-      line-height: 1.75;
-      text-shadow: 0 1px 14px rgba(40,10,25,.4);
-    }
-
-    .btn-hero {
-      display: inline-block;
-      background: var(--cta-grad);
-      color: var(--espresso);
-      font-size: 1.02rem;
-      font-weight: 700;
-      padding: 17px 38px;
-      border-radius: 18px;
-      text-decoration: none;
-      box-shadow: 0 10px 30px rgba(244,138,90,.5);
-      transition: transform 0.25s ease;
-      letter-spacing: 0.01em;
-    }
-
-    .btn-hero:hover { transform: translateY(-2px); }
-
-    .hero-scroll {
-      position: absolute;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      color: rgba(255,255,255,0.85);
-      font-size: 0.72rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      text-shadow: 0 1px 8px rgba(40,10,25,.4);
-      animation: drift 2.6s ease-in-out infinite;
-    }
-
-    @keyframes drift {
-      0%, 100% { transform: translate(-50%, 0); }
-      50% { transform: translate(-50%, 8px); }
-    }
-
-    .scroll-line {
-      width: 1px;
-      height: 40px;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.65), transparent);
-    }
-
-    /* ── SCROLLING CONTENT — rises over the still sky ─────────── */
-    .flow {
-      position: relative;
-      z-index: 2;
-      background: var(--cream);
-    }
-
-    .container {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    .container-narrow {
-      max-width: 680px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    section { padding: 88px 0; }
-
-    /* Frosted glass panels */
-    .glass {
-      background: var(--glass-bg);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--glass-brd);
-      border-radius: 26px;
-      padding: 44px 40px;
-      box-shadow: var(--glass-shadow);
-      opacity: 0;
-      transform: translateY(46px);
-      transition: opacity .8s ease, transform .8s ease;
-    }
-
-    .glass.lit { opacity: 1; transform: translateY(0); }
-
-    /* ── OPENING ─────────────────────────────────────────────── */
-    .opening {
-      padding: 112px 0 80px;
-      text-align: center;
-    }
-
-    .opening-quote {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.5rem, 3.5vw, 2.2rem);
-      font-weight: 500;
-      font-style: italic;
-      color: var(--accent-ital);
-      line-height: 1.55;
-      margin-bottom: 48px;
-      max-width: 620px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .opening-body {
-      font-size: 1.05rem;
-      color: var(--sienna);
-      line-height: 1.9;
-      max-width: 580px;
-      margin: 0 auto;
-    }
-
-    .opening-body p + p { margin-top: 24px; }
-
-    .opening-body strong {
-      color: var(--espresso);
-      font-weight: 600;
-    }
-
-    /* ── SECTION HEADINGS ────────────────────────────────────── */
-    .section-kicker {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--kicker);
-      margin-bottom: 14px;
-    }
-
-    .section-h {
-      font-size: clamp(1.65rem, 3.6vw, 2.3rem);
-      font-weight: 800;
-      color: var(--espresso);
-      line-height: 1.25;
-      margin-bottom: 56px;
-      max-width: 560px;
-    }
-
-    .section-h em {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-weight: 500;
-      color: var(--accent-ital);
-    }
-
-    /* ── HOW ─────────────────────────────────────────────────── */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 40px;
-      margin-top: 8px;
-    }
-
-    .step {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .step-num {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 2.8rem;
-      font-weight: 500;
-      color: var(--kicker);
-      line-height: 1;
-    }
-
-    .step-title {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: var(--espresso);
-    }
-
-    .step-desc {
-      font-size: 0.92rem;
-      color: var(--sienna);
-      line-height: 1.75;
-    }
-
-    /* ── MOMENTS ─────────────────────────────────────────────── */
-    .moments-intro {
-      font-size: 1rem;
-      color: var(--sienna);
-      line-height: 1.85;
-      max-width: 540px;
-      margin: -36px 0 48px;
-    }
-
-    .moments-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .moment-pill {
-      background: rgba(255,255,255,.62);
-      border: 1px solid rgba(255,255,255,.9);
-      border-radius: 50px;
-      padding: 10px 20px;
-      font-size: 0.88rem;
-      font-weight: 500;
-      color: var(--espresso);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 14px rgba(74,36,24,.06);
-      transition: border-color 0.2s, background 0.2s, transform 0.2s;
-    }
-
-    .moment-pill:hover {
-      border-color: rgba(244,138,90,.6);
-      background: rgba(255,255,255,.85);
-      transform: translateY(-1px);
-    }
-
-    /* ── VOICES ──────────────────────────────────────────────── */
-    .voice-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
-      margin-top: 8px;
-    }
-
-    .voice-card {
-      background: rgba(255,255,255,.62);
-      border: 1px solid rgba(255,255,255,.9);
-      border-radius: 18px;
-      padding: 36px 32px;
-    }
-
-    .voice-text {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-size: 1rem;
-      color: var(--accent-ital);
-      line-height: 1.8;
-      margin-bottom: 28px;
-    }
-
-    .voice-name {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--espresso);
-    }
-
-    .voice-role {
-      font-size: 0.8rem;
-      color: var(--sienna);
-      margin-top: 3px;
-    }
-
-    /* ── EMERGENCY ───────────────────────────────────────────── */
-    .emergency-intro {
-      font-size: 1.05rem;
-      color: var(--sienna);
-      line-height: 1.8;
-      max-width: 620px;
-      margin: -36px auto 48px 0;
-    }
-
-    .emergency-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      text-align: left;
-    }
-
-    .emergency-tile {
-      background: rgba(255,255,255,.62);
-      border: 1px solid rgba(255,255,255,.9);
-      border-radius: 18px;
-      padding: 26px 24px;
-    }
-
-    .emergency-tile .ico { font-size: 2rem; margin-bottom: 12px; }
-
-    .emergency-tile h3 {
-      font-size: 0.95rem;
-      font-weight: 800;
-      color: var(--espresso);
-      margin-bottom: 8px;
-    }
-
-    .emergency-tile p {
-      font-size: 0.86rem;
-      color: var(--sienna);
-      line-height: 1.65;
-    }
-
-    /* ── FOUNDING OFFER — solid ground ───────────────────────── */
-    .offer-section {
-      background: linear-gradient(180deg,#3A2113,#2B1A10);
-      padding: 112px 0;
-      text-align: center;
-      color: #F5CEAA;
-    }
-
-    .offer-section .section-kicker { color: #FFD07A; }
-
-    .offer-section .section-h {
-      color: #fff;
-      max-width: 100%;
-      margin-bottom: 16px;
-    }
-
-    .offer-sub {
-      font-size: 1rem;
-      color: #D9A87C;
-      margin-bottom: 64px;
-    }
-
-    .offer-card {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(245,206,170,0.18);
-      border-radius: 26px;
-      max-width: 520px;
-      margin: 0 auto;
-      padding: 52px 44px;
-      text-align: left;
-    }
-
-    .offer-price-row {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .offer-was {
-      font-size: 0.9rem;
-      color: #A87A52;
-      text-decoration: line-through;
-    }
-
-    .offer-price {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 3.6rem;
-      font-weight: 500;
-      color: #FFD07A;
-      line-height: 1;
-      letter-spacing: -0.02em;
-    }
-
-    .offer-price sup {
-      font-size: 1.4rem;
-      vertical-align: super;
-      font-family: 'Inter', sans-serif;
-      font-weight: 400;
-    }
-
-    .offer-currency {
-      font-size: 1rem;
-      color: #D9A87C;
-      font-weight: 400;
-      align-self: flex-end;
-      padding-bottom: 8px;
-    }
-
-    .offer-note {
-      font-size: 0.85rem;
-      color: #A87A52;
-      margin-bottom: 36px;
-    }
-
-    .offer-includes {
-      list-style: none;
-      margin-bottom: 40px;
-    }
-
-    .offer-includes li {
-      font-size: 0.92rem;
-      color: #F5CEAA;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(245,206,170,0.12);
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .offer-includes li::before {
-      content: '';
-      display: inline-block;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #F48A5A;
-      flex-shrink: 0;
-    }
-
-    .offer-includes li:last-child { border-bottom: none; }
-
-    .btn-offer {
-      display: block;
-      width: 100%;
-      background: var(--cta-grad);
-      color: var(--espresso);
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 18px 28px;
-      border-radius: 18px;
-      text-decoration: none;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(244,138,90,.5);
-      transition: transform 0.25s ease;
-      letter-spacing: 0.01em;
-    }
-
-    .btn-offer:hover { transform: translateY(-2px); }
-
-    .offer-limit {
-      font-size: 0.78rem;
-      color: #A87A52;
-      text-align: center;
-      margin-top: 16px;
-      letter-spacing: 0.04em;
-    }
-
-    /* Waitlist */
-    .waitlist {
-      max-width: 520px;
-      margin: 48px auto 0;
-      text-align: center;
-    }
-
-    .waitlist p {
-      font-size: 0.85rem;
-      color: #A87A52;
-      margin-bottom: 16px;
-    }
-
-    .waitlist-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .waitlist-input {
-      flex: 1;
-      min-width: 0;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(245,206,170,0.25);
-      border-radius: 14px;
-      padding: 13px 18px;
-      font-size: 0.9rem;
-      color: #F5CEAA;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .waitlist-input::placeholder { color: #A87A52; }
-    .waitlist-input:focus { border-color: rgba(255,208,122,0.55); }
-
-    .btn-waitlist {
-      background: rgba(255,255,255,0.08);
-      border: 1.5px solid rgba(245,206,170,0.3);
-      color: #F5CEAA;
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 13px 22px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-family: inherit;
-      white-space: nowrap;
-      transition: border-color 0.2s, color 0.2s;
-    }
-
-    .btn-waitlist:hover {
-      border-color: rgba(255,208,122,0.6);
-      color: #FFD07A;
-    }
-
-    /* ── FAQ ─────────────────────────────────────────────────── */
-    .faq-list { margin-top: 8px; }
-
-    .faq-item {
-      border-top: 1px solid rgba(232,118,58,0.22);
-      padding: 30px 0;
-    }
-
-    .faq-item:last-child { border-bottom: 1px solid rgba(232,118,58,0.22); }
-
-    .faq-q {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.12rem;
-      font-weight: 600;
-      color: var(--espresso);
-      margin-bottom: 14px;
-    }
-
-    .faq-a {
-      font-size: 0.93rem;
-      color: var(--sienna);
-      line-height: 1.85;
-      max-width: 640px;
-    }
-
-    /* ── FOOTER — solid ground ───────────────────────────────── */
-    footer {
-      position: relative;
-      z-index: 2;
-      background: linear-gradient(180deg,#3A2113,#2B1A10);
-      padding: 64px 32px 44px;
-      text-align: center;
-      color: #F5CEAA;
-    }
-
-    .footer-logo { margin-bottom: 16px; }
-
-    .footer-logo img {
-      height: 80px;
-      width: auto;
-      opacity: 0.92;
-    }
-
-    .footer-tagline {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.95rem;
-      color: #D9A87C;
-      font-style: italic;
-      margin-bottom: 32px;
-    }
-
-    .footer-links {
-      display: flex;
-      gap: 28px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 28px;
-    }
-
-    .footer-links a {
-      font-size: 0.82rem;
-      color: #D9A87C;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-
-    .footer-links a:hover { color: #FFD07A; }
-
-    .footer-copy {
-      font-size: 0.78rem;
-      color: #A87A52;
-    }
-
-    /* ── REDUCED MOTION ──────────────────────────────────────── */
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      .glass { opacity: 1; transform: none; transition: none; }
-      .hero-scroll { animation: none; }
-    }
-
-    /* ── RESPONSIVE ──────────────────────────────────────────── */
-    @media (max-width: 600px) {
-      nav { padding: 16px 20px; }
-      .container, .container-narrow { padding: 0 20px; }
-      section { padding: 64px 0; }
-      .glass { padding: 32px 24px; }
-      .offer-card { padding: 36px 24px; }
-      .voice-card { padding: 30px 24px; }
-      .steps { gap: 32px; }
-      .waitlist-row { flex-direction: column; }
-      .hero-scroll { display: none; }
-    }
-
-    /* ── VISUALLY HIDDEN ─────────────────────────────────────── */
-    .sr-only {
-      position: absolute; width: 1px; height: 1px;
-      clip: rect(0,0,0,0); overflow: hidden;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Solace Life — Leave something they'll carry forever</title>
+<meta name="description" content="Love letters for the future. Record the messages your family will treasure, delivered on the days that matter. Join the waitlist." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ============================================================
+     Malta-style structure · Solace "Living Sky" palette.
+     Elegant, restrained, image-led. Replace media URLs + wire the
+     form (see comments) for production; host video on a CDN.
+     ============================================================ */
+  *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+  :root{
+    --cream:#FFF8F2; --paper:#FFFFFF; --espresso:#4A2418; --sienna:#8A5A3A;
+    --kicker:#C06A2E; --band:#E7DDD2; --teal:#3F5C63; --line:rgba(74,36,24,.14);
+  }
+  html{ scroll-behavior:smooth; }
+  body{ font-family:'Inter',-apple-system,sans-serif; background:var(--cream); color:var(--espresso);
+    -webkit-font-smoothing:antialiased; line-height:1.7; }
+  .serif{ font-family:'Playfair Display',Georgia,serif; }
+  .caps{ text-transform:uppercase; letter-spacing:.2em; }
+
+  /* ── announcement bar ── */
+  .announce{ background:var(--teal); color:#fff; text-align:center; font-size:.72rem;
+    letter-spacing:.22em; text-transform:uppercase; padding:11px 40px; position:relative; }
+  .announce span{ opacity:.95; }
+  .announce .ar{ position:absolute; top:50%; transform:translateY(-50%); opacity:.6; font-size:.9rem; }
+  .announce .ar.l{ left:18px; } .announce .ar.r{ right:18px; }
+
+  /* ── nav ── */
+  nav{ background:var(--paper); border-bottom:1px solid var(--line); display:flex; align-items:center;
+    justify-content:space-between; padding:20px 36px; }
+  .brand{ font-family:'Playfair Display',serif; font-size:1.35rem; letter-spacing:.16em; color:var(--espresso);
+    text-decoration:none; }
+  .navlinks{ display:flex; gap:34px; }
+  .navlinks a{ font-size:.74rem; letter-spacing:.18em; text-transform:uppercase; color:var(--espresso);
+    text-decoration:none; opacity:.85; transition:opacity .2s; }
+  .navlinks a:hover{ opacity:1; }
+  @media(max-width:680px){ .navlinks{ display:none; } }
+
+  /* ── hero (full-height, left column, left-aligned — empty chair stays the focus) ── */
+  .hero{ position:relative; height:100vh; min-height:560px; overflow:hidden; background:#0b0712; }
+  .sky{ position:absolute; inset:0; z-index:0; }
+  .sky video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 1s linear; }
+  .sky video.show{ opacity:1; }
+  /* darken only the LEFT (over the black negative space behind the text); keep the chair clear */
+  .sky .scrim{ position:absolute; inset:0; background:linear-gradient(to right, rgba(11,7,18,.6) 0%, rgba(11,7,18,.15) 42%, rgba(11,7,18,0) 62%); }
+  .hero-inner{ position:absolute; z-index:2; top:50%; transform:translateY(-50%); left:6vw; max-width:400px;
+    color:#fff; text-align:left; padding-left:26px; border-left:1px solid rgba(255,255,255,.45); }
+  .hero .eyebrow{ font-size:.72rem; letter-spacing:.28em; text-transform:uppercase; opacity:.85; margin-bottom:18px; }
+  .hero h1{ font-family:'Playfair Display',serif; font-weight:500; font-size:clamp(2.6rem,6vw,4.4rem);
+    line-height:1.05; letter-spacing:.01em; text-shadow:0 2px 30px rgba(11,7,18,.5); }
+  .hero p{ font-size:clamp(1rem,2vw,1.15rem); font-weight:400; opacity:.94; max-width:360px; margin:20px 0 0;
+    line-height:1.7; text-shadow:0 1px 16px rgba(11,7,18,.55); }
+  .btn{ display:inline-block; cursor:pointer; border:none; font-family:inherit; font-size:.74rem;
+    letter-spacing:.2em; text-transform:uppercase; padding:16px 34px; text-decoration:none; transition:opacity .2s, background .2s; }
+  .btn-light{ background:var(--paper); color:var(--espresso); margin-top:30px; }
+  .btn-light:hover{ opacity:.88; }
+  .btn-teal{ background:var(--teal); color:#fff; }
+  .btn-teal:hover{ opacity:.9; }
+
+  /* ── trio band (how it works, elegant + restrained) ── */
+  .trio{ background:var(--paper); padding:74px 24px; }
+  .trio-grid{ max-width:980px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:40px; text-align:center; }
+  @media(max-width:680px){ .trio-grid{ grid-template-columns:1fr; gap:32px; } }
+  .trio h3{ font-family:'Playfair Display',serif; font-weight:500; font-size:1.25rem; margin-bottom:8px; }
+  .trio p{ font-size:.95rem; color:var(--sienna); line-height:1.7; }
+  .trio .num{ font-size:.72rem; letter-spacing:.24em; text-transform:uppercase; color:var(--kicker); margin-bottom:14px; }
+
+  /* ── waitlist band (the "welcome" band, muted) ── */
+  .band{ background:var(--band); padding:84px 24px; text-align:center; }
+  .band .label{ font-size:.74rem; letter-spacing:.24em; text-transform:uppercase; color:var(--sienna); margin-bottom:16px; }
+  .band h2{ font-family:'Playfair Display',serif; font-weight:500; font-size:clamp(1.8rem,4vw,2.7rem);
+    line-height:1.18; color:var(--espresso); }
+  .band .sub{ color:var(--sienna); font-size:1.02rem; line-height:1.8; max-width:460px; margin:18px auto 34px; }
+  form{ max-width:440px; margin:0 auto; text-align:left; }
+  .field{ margin-bottom:16px; }
+  .field input{ width:100%; padding:15px 16px; font-size:1.02rem; font-family:inherit; color:var(--espresso);
+    background:var(--paper); border:1px solid var(--line); }
+  .field input:focus{ outline:none; border-color:var(--teal); }
+  .field input::placeholder{ color:rgba(74,36,24,.4); }
+  .field .hint{ font-size:.8rem; color:var(--sienna); margin-top:7px; }
+  form .btn-teal{ width:100%; margin-top:6px; }
+  .stores{ font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--sienna); margin-top:18px; }
+  .thanks{ display:none; }
+  .thanks p{ color:var(--sienna); margin-top:12px; }
+
+  /* ── footer ── */
+  footer{ background:var(--paper); text-align:center; padding:46px 24px; border-top:1px solid var(--line); }
+  footer .brand{ font-size:1.1rem; }
+  footer .disc{ font-size:.72rem; color:rgba(74,36,24,.45); margin-top:14px; max-width:480px; margin-left:auto; margin-right:auto; }
+
+  /* ── lightbox ── */
+  .lightbox{ position:fixed; inset:0; z-index:300; background:rgba(11,7,18,.95); display:none;
+    align-items:center; justify-content:center; padding:20px; }
+  .lightbox.open{ display:flex; }
+  .lightbox video{ width:100%; max-width:980px; max-height:85vh; }
+  .lightbox__close{ position:absolute; top:18px; right:24px; color:#fff; font-size:32px; cursor:pointer; opacity:.85; }
+
+  @media (prefers-reduced-motion: reduce){
+    .sky video{ display:none; }
+    .sky{ background:linear-gradient(160deg,#2a160e,#1a0d12 55%,#0b0712); }
+  }
+</style>
 </head>
 <body>
 
-  <!-- ── FIXED SKY — the app's own login sky, eternal, unmoving ── -->
-  <div class="sky" aria-hidden="true">
-    <video autoplay muted loop playsinline>
-      <source src="assets/sky.mp4" type="video/mp4" />
-    </video>
-    <div class="scrim"></div>
+  <div class="announce">
+    <span class="ar l">&lsaquo;</span>
+    <span>Launching soon on iOS &amp; Android</span>
+    <span class="ar r">&rsaquo;</span>
   </div>
 
-  <!-- ── NAV ──────────────────────────────────────────────────── -->
-  <nav aria-label="Main navigation">
-    <a href="#" class="logo">
-      <img src="logos/logo-nav.png" alt="Solace Life" />
-    </a>
-    <a href="#founding" class="nav-cta">Founding access</a>
+  <nav>
+    <a href="#" class="brand">Solace&nbsp;Life</a>
+    <div class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#waitlist">Waitlist</a>
+      <a href="#" id="navWatch">Watch the film</a>
+    </div>
   </nav>
 
-  <!-- ── HERO — static content over the fixed sky ─────────────── -->
-  <header class="hero" role="banner">
-    <div class="hero-content">
-      <img src="logos/logo-nav.png" alt="Solace Life"
-           style="height:220px;width:auto;display:block;margin:0 auto 32px;
-                  filter:drop-shadow(0 2px 16px rgba(40,10,25,0.40));" />
-      <p class="hero-eyebrow">Founding member access &mdash; first 100 families</p>
-      <h1>Leave them something<br><em>to hold onto.</em></h1>
-      <p class="hero-sub">
-        Your voice. Your stories. Your love — arriving on the days that matter most, long after the moment has passed.
-      </p>
-      <a href="#founding" class="btn-hero">Claim your founding spot</a>
-      <p style="margin-top:18px; font-size:0.78rem; color:rgba(255,255,255,0.85); letter-spacing:0.04em; text-shadow:0 1px 10px rgba(40,10,25,0.4);">
-        $99/year &mdash; your family never pays after you're gone &nbsp;&middot;&nbsp; First 100 founding families lock the rate for life
-      </p>
+  <!-- HERO -->
+  <header class="hero">
+    <div class="sky">
+      <video id="skyA" muted playsinline preload="auto"
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_3EjfE3PZqa2vd5Dn7e1nfMLvak3/hf_20260606_221306_f898d645-e828-4746-a428-62f175037862.mp4"></video>
+      <video id="skyB" muted playsinline preload="auto"
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_3EjfE3PZqa2vd5Dn7e1nfMLvak3/hf_20260606_221306_f898d645-e828-4746-a428-62f175037862.mp4"></video>
+      <div class="scrim"></div>
     </div>
-
-    <div class="hero-scroll" aria-hidden="true">
-      <div class="scroll-line"></div>
-      <span>scroll</span>
+    <div class="hero-inner">
+      <div class="eyebrow">Love letters for the future</div>
+      <h1>Say it now.</h1>
+      <p>Record the messages, stories, and moments your family will treasure — delivered on the days that matter most.</p>
+      <button class="btn btn-light" id="watchBtn">Watch her story</button>
     </div>
   </header>
 
-  <!-- ── SCROLLING CONTENT — rises over the still sky ─────────── -->
-  <div class="flow">
-
-  <!-- ── OPENING ───────────────────────────────────────────────── -->
-  <section class="opening" aria-labelledby="opening-h">
-    <h2 id="opening-h" class="sr-only">Why Solace Life exists</h2>
-    <div class="container-narrow">
-      <div class="glass" style="text-align:center;">
-        <p class="opening-quote">
-          "The people we love most never hear the things we mean to say."
-        </p>
-        <div class="opening-body">
-          <p>
-            We think about it on long drives home. In quiet moments before sleep. All the things we'd want them to know. <strong>How proud we are. What they've meant to us. The stories we keep meaning to tell.</strong>
-          </p>
-          <p>
-            We get busy. We assume there will be more time. Then there isn't. And the people left behind carry that silence for the rest of their lives.
-          </p>
-          <p>
-            Solace Life is a vault for what matters most — your voice, recorded and delivered on the days your family will need it most.
-          </p>
-        </div>
+  <!-- HOW IT WORKS (restrained trio) -->
+  <section class="trio" id="how">
+    <div class="trio-grid">
+      <div>
+        <div class="num">One</div>
+        <h3 class="serif">Record</h3>
+        <p>A message, a story, a song — in your own voice, whenever the moment feels right.</p>
+      </div>
+      <div>
+        <div class="num">Two</div>
+        <h3 class="serif">Choose the moment</h3>
+        <p>A birthday, a wedding, an ordinary Tuesday years from now. You decide when it arrives.</p>
+      </div>
+      <div>
+        <div class="num">Three</div>
+        <h3 class="serif">They receive it</h3>
+        <p>Your family opens it on the day it matters — kept safe and ready for decades.</p>
       </div>
     </div>
   </section>
 
-  <!-- ── HOW IT WORKS ──────────────────────────────────────────── -->
-  <section class="how" aria-labelledby="how-h">
-    <div class="container">
-      <div class="glass">
-        <p class="section-kicker">How it works</p>
-        <h2 id="how-h" class="section-h" style="margin-bottom:48px;">Simple to start. <em>Priceless to receive.</em></h2>
-        <div class="steps" role="list">
-          <div class="step" role="listitem">
-            <div class="step-num" aria-hidden="true">01</div>
-            <div class="step-title">Record your moment</div>
-            <p class="step-desc">Leave a voice message, write a letter, record a video, or share a photo album — anything you want your family to have. It takes five minutes to create something that will last a lifetime.</p>
-          </div>
-          <div class="step" role="listitem">
-            <div class="step-num" aria-hidden="true">02</div>
-            <div class="step-title">Set your time capsule</div>
-            <p class="step-desc">Choose who receives each moment, and exactly when — a birthday, a graduation, a wedding, a quiet Tuesday thirty years from now. Or simply: when you're gone. You decide.</p>
-          </div>
-          <div class="step" role="listitem">
-            <div class="step-num" aria-hidden="true">03</div>
-            <div class="step-title">It arrives</div>
-            <p class="step-desc">Your moment reaches them on the right day. A gift they didn't know was coming, from the person they love most. In your voice. In your words. Exactly as you intended.</p>
-          </div>
+  <!-- WAITLIST BAND -->
+  <section class="band" id="waitlist">
+    <div id="formWrap">
+      <div class="label">Be the first &#9825;</div>
+      <h2 class="serif">Leave something they'll carry forever.</h2>
+      <p class="sub">We're putting the finishing touches on Solace Life. Join the waitlist and we'll
+        tell you the moment it's ready.</p>
+      <!-- WIRE ME UP: POST { email, first_letter } to Supabase / Mailchimp / Formspree -->
+      <form id="waitlistForm" novalidate>
+        <div class="field"><input id="email" name="email" type="email" required placeholder="Email address" /></div>
+        <div class="field">
+          <input id="firstLetter" name="first_letter" type="text" placeholder="Who would your first letter be for? (optional)" />
+          <div class="hint">It just helps us build something worthy of it.</div>
         </div>
-      </div>
+        <button class="btn btn-teal" type="submit">Join the waitlist</button>
+        <div class="stores">Coming soon · iOS &amp; Android</div>
+      </form>
+    </div>
+    <div class="thanks" id="thanks">
+      <div class="label" style="color:var(--kicker)">You're on the list</div>
+      <h2 class="serif">Thank you.</h2>
+      <p>We'll reach out the moment Solace Life is ready for you.</p>
     </div>
   </section>
 
-  <!-- ── MOMENTS ───────────────────────────────────────────────── -->
-  <section class="moments" aria-labelledby="moments-h">
-    <div class="container">
-      <div class="glass">
-        <p class="section-kicker">Every occasion</p>
-        <h2 id="moments-h" class="section-h">Your voice, there for <em>every moment that matters</em></h2>
-        <p class="moments-intro">
-          Life is made of occasions. Solace Life makes sure your presence is felt at all of them — regardless of what life brings.
-        </p>
-        <div class="moments-grid" role="list">
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🎂</span> Birthdays</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">💍</span> Anniversaries</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🎓</span> Graduation</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">💐</span> Mother's Day</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">👔</span> Father's Day</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">⭐</span> Christmas</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🏮</span> Lunar New Year</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">✨</span> Diwali</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🌙</span> Eid</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🌺</span> Día de los Muertos</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🪔</span> Hanukkah</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">👶</span> New arrivals</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">🌅</span> Retirement</div>
-          <div class="moment-pill" role="listitem"><span aria-hidden="true">💛</span> Just because</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── VOICES ────────────────────────────────────────────────── -->
-  <section class="voices" aria-labelledby="voices-h">
-    <div class="container">
-      <div class="glass">
-        <p class="section-kicker">From our families</p>
-        <h2 id="voices-h" class="section-h" style="margin-bottom:44px;">Real reasons people <em>are recording</em></h2>
-        <div class="voice-cards" role="list">
-          <div class="voice-card" role="listitem">
-            <p class="voice-text">"My father passed two years ago. He wasn't a man of many words — but I would give anything to hear his voice one more time. I don't want my children to feel that silence."</p>
-            <div class="voice-name">Margaret, 71</div>
-            <div class="voice-role">Retired teacher · Toronto</div>
-          </div>
-          <div class="voice-card" role="listitem">
-            <p class="voice-text">"I travel a lot for work. My daughter is six. I've already recorded her a message for her 18th birthday — just in case. I hope she never needs it early. But knowing it's there gives me real peace."</p>
-            <div class="voice-name">David, 44</div>
-            <div class="voice-role">Sales director · Vancouver</div>
-          </div>
-          <div class="voice-card" role="listitem">
-            <p class="voice-text">"I recorded a message for my husband's retirement — something I'd been meaning to say for thirty years. He cried. I cried. It was worth everything just for that one moment."</p>
-            <div class="voice-name">Susan, 58</div>
-            <div class="voice-role">Beta family member · Calgary</div>
-          </div>
-          <div class="voice-card" role="listitem" style="border-top: 3px solid #F06292;">
-            <p class="voice-text" style="font-size:0.88rem; margin-bottom:16px; color:#8A5A3A; font-style:normal; font-family:inherit; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;">🚨 Why the emergency contact feature exists</p>
-            <p class="voice-text">"Imagine your parent collapses in public. A bystander picks up their phone to call for help — but it's locked. With Solace Life, your contact information is visible right on the lock screen. No passcode. No searching. Just an immediate connection to the person who needs to know."</p>
-            <div class="voice-name">The Solace Life Team</div>
-            <div class="voice-role">This is what we built it for.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── EMERGENCY FEATURE ─────────────────────────────────────── -->
-  <section aria-labelledby="emergency-h">
-    <div class="container">
-      <div class="glass">
-        <p class="section-kicker" style="color:#F06292;">Peace of mind in the worst moments</p>
-        <h2 id="emergency-h" class="section-h" style="margin-bottom: 20px; max-width:620px;">Your emergency card — visible <em>even when your phone is locked</em></h2>
-        <p class="emergency-intro" style="margin-top:0;">
-          When something unexpected happens, seconds matter. Solace Life puts your emergency contact front and center on your lock screen — no unlock required. Anyone who picks up your phone can reach your family immediately.
-        </p>
-        <div class="emergency-grid">
-          <div class="emergency-tile">
-            <div class="ico" aria-hidden="true">📱</div>
-            <h3>Lock screen visible</h3>
-            <p>First responders and good samaritans can reach your designated contact without ever unlocking your phone.</p>
-          </div>
-          <div class="emergency-tile">
-            <div class="ico" aria-hidden="true">🗝️</div>
-            <h3>Vault released to family</h3>
-            <p>Your trusted contacts can unlock your Solace Life vault — so your family receives every moment you left for them, exactly when you intended.</p>
-          </div>
-          <div class="emergency-tile">
-            <div class="ico" aria-hidden="true">👨‍👩‍👧</div>
-            <h3>Your family, first</h3>
-            <p>You choose who gets called. Your family knows you're in good hands — and they get there as fast as humanly possible.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── FOUNDING OFFER ────────────────────────────────────────── -->
-  <section class="offer-section" id="founding" aria-labelledby="offer-h">
-    <div class="container">
-      <p class="section-kicker">Limited access</p>
-      <h2 id="offer-h" class="section-h" style="margin-left:auto;margin-right:auto;text-align:center;">First 100 founding families</h2>
-      <p class="offer-sub">The vault that outlasts you, for the price of a dinner out.</p>
-
-      <div class="offer-card">
-        <div class="offer-price-row">
-          <div class="offer-was" id="offerWas">Founding rate — locked for life</div>
-        </div>
-        <div class="offer-price-row">
-          <div class="offer-price"><sup>$</sup>99</div>
-          <div class="offer-currency" id="offerCurrency">CAD &middot; per year</div>
-        </div>
-        <p class="offer-note">One membership. Your family never pays to receive what you leave them — ever.</p>
-
-        <!-- Currency badge -->
-        <div id="currencyBadge" style="display:inline-block; margin-bottom:20px; font-size:0.75rem; padding:5px 14px; border-radius:50px; border:1px solid rgba(245,206,170,0.25); color:#A87A52; letter-spacing:0.06em;">
-          Detecting your currency&hellip;
-        </div>
-
-        <ul class="offer-includes" aria-label="What's included">
-          <li>After your passing, everything stays with your family — at no cost to them, guaranteed 25+ years</li>
-          <li>Unlimited moments — voice, video, written &amp; photos</li>
-          <li>Unlimited family members</li>
-          <li>Scheduled delivery for any occasion, any date</li>
-          <li>Founding member status — your $99/year rate locked for life</li>
-          <li>Direct line to the founder</li>
-        </ul>
-
-        <!--
-          STRIPE PAYMENT LINKS — replace both placeholders when ready:
-          USD link: create a $99.00 USD / YEAR subscription price in Stripe → copy Payment Link URL
-          CAD link: create a $99.00 CAD / YEAR subscription price in Stripe → copy Payment Link URL
-        -->
-        <a href="#"
-           id="offerBtn"
-           class="btn-offer"
-           data-usd-href="https://buy.stripe.com/test_cNiaEP65cbTLc6M1EU9bO03"
-           data-cad-href="https://buy.stripe.com/test_7sY28jfFM1f7eeU83i9bO02"
-           aria-label="Claim founding member spot">
-          Claim my founding spot
-        </a>
-        <p class="offer-limit">Spots remaining: <strong style="color:#F5CEAA;">100 of 100</strong> &mdash; closes permanently when full</p>
-      </div>
-
-      <div class="waitlist">
-        <p>Not ready yet? Join the waitlist &mdash; we'll reach you when founding access reopens.</p>
-        <div class="waitlist-row">
-          <label for="wl-email" class="sr-only">Your email address</label>
-          <input type="email" id="wl-email" class="waitlist-input" placeholder="your@email.com" autocomplete="email" />
-          <button type="button" class="btn-waitlist">Notify me</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── FAQ ───────────────────────────────────────────────────── -->
-  <section class="faq" aria-labelledby="faq-h">
-    <div class="container-narrow">
-      <div class="glass">
-        <p class="section-kicker">Questions</p>
-        <h2 id="faq-h" class="section-h" style="margin-bottom:36px;">Honest <em>answers</em></h2>
-        <dl class="faq-list">
-          <div class="faq-item">
-            <dt class="faq-q">What happens to my vault when I'm gone?</dt>
-            <dd class="faq-a">Your designated family members receive access automatically. The vault stays open — no one needs to make any payments, log in to manage anything, or deal with paperwork. Your moments are simply there, waiting for the people you left them for.</dd>
-          </div>
-          <div class="faq-item">
-            <dt class="faq-q">Is everything private?</dt>
-            <dd class="faq-a">Yes, completely. Your vault is encrypted with AES-256 — the same standard used by banks. We cannot read your messages. No one can. Only the people you explicitly name have access, and only when you choose.</dd>
-          </div>
-          <div class="faq-item">
-            <dt class="faq-q">Can I schedule messages for dates years from now?</dt>
-            <dd class="faq-a">Yes — that's one of the most meaningful things Solace Life does. Record a message today and schedule it to arrive on a birthday five years away, a graduation you may not be there for, or just a random Tuesday when someone might need to hear your voice. There's no expiration. Your words arrive exactly when you set them to.</dd>
-          </div>
-          <div class="faq-item">
-            <dt class="faq-q">Why only 100 founding members?</dt>
-            <dd class="faq-a">We want a small group of real people who believe in this early. Founding members help us shape what Solace Life becomes, and they hold us accountable to building something worthy of the moments they're trusting us with. That kind of relationship isn't possible at scale — so we're keeping it small on purpose.</dd>
-          </div>
-          <div class="faq-item">
-            <dt class="faq-q">What if Solace Life ever shuts down?</dt>
-            <dd class="faq-a">We give you at least 90 days notice. You can export every moment — voice, video, written, and photos — in a format you keep forever. We will never hold your family's moments hostage. It's in writing in our terms of service.</dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  </section>
-
-  </div><!-- /.flow -->
-
-  <!-- ── FOOTER ────────────────────────────────────────────────── -->
   <footer>
-    <div class="footer-logo">
-      <img src="logos/logo-stacked.png" alt="Solace Life" />
-    </div>
-    <p class="footer-tagline">Leave something behind worth remembering.</p>
-    <nav class="footer-links" aria-label="Footer">
-      <a href="privacy.html">Privacy Policy</a>
-      <a href="terms.html">Terms of Service</a>
-      <a href="mailto:hello@solacelife.ca">hello@solacelife.ca</a>
-    </nav>
-    <p class="footer-copy">&copy; 2026 Solace Life. All rights reserved. Vancouver, BC, Canada.</p>
+    <div class="brand serif">Solace&nbsp;Life</div>
+    <p class="disc">Film is a dramatization. Solace Life shares copies of your own messages and memories.</p>
   </footer>
 
-  <!-- ── CURRENCY DETECTION ──────────────────────────────────────── -->
-  <!--
-    Detection order:
-    1. ipapi.co free geo-IP API (no key needed, 1,000 req/day free)
-    2. Fallback: browser timezone — Canadian zones → CAD, everything else → USD
-    3. Final fallback: USD (safest default — US market is larger)
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox">
+    <span class="lightbox__close" id="closeBtn" aria-label="Close">&times;</span>
+    <!-- Final branded film (2s logo intro + film + 2s logo outro + watermark) -->
+    <video id="filmVideo" controls playsinline preload="metadata"
+      src="video/Sandra_branded.mp4"></video>
+  </div>
 
-    When you have your Stripe Payment Links:
-    - Set data-usd-href on #offerBtn to your USD Stripe link
-    - Set data-cad-href on #offerBtn to your CAD Stripe link
-  -->
   <script>
-    (function () {
-      var CA_ZONES = [
-        'America/Toronto','America/Vancouver','America/Winnipeg',
-        'America/Edmonton','America/Halifax','America/St_Johns',
-        'America/Regina','America/Whitehorse','America/Yellowknife',
-        'America/Iqaluit','America/Moncton','America/Glace_Bay',
-        'America/Goose_Bay','America/Nipigon','America/Rainy_River',
-        'America/Rankin_Inlet','America/Resolute','America/Swift_Current',
-        'America/Thunder_Bay','America/Dawson','America/Dawson_Creek',
-        'America/Creston','America/Fort_Nelson','America/Inuvik',
-        'America/Cambridge_Bay','America/Pangnirtung'
-      ]
+    /* seamless crossfade loop */
+    const FADE=0.7, a=document.getElementById('skyA'), b=document.getElementById('skyB');
+    let active=a, idle=b;
+    function arm(v){
+      v.addEventListener('timeupdate', function h(){
+        if(v!==active) return;
+        if(v.duration && v.currentTime >= v.duration-FADE){
+          v.removeEventListener('timeupdate', h);
+          idle.currentTime=0; idle.play(); idle.classList.add('show'); active.classList.remove('show');
+          const prev=active; [active,idle]=[idle,active];
+          setTimeout(()=>{ prev.pause(); arm(active); }, FADE*1000);
+        }
+      });
+    }
+    function startSky(){ a.classList.add('show'); a.play().then(()=>arm(a)).catch(()=>{}); }
+    if(a.readyState>=2) startSky(); else a.addEventListener('loadeddata', startSky, {once:true});
 
-      function applyCAD() {
-        document.getElementById('offerWas').textContent       = 'Founding rate — locked for life'
-        document.getElementById('offerCurrency').innerHTML    = 'CAD &middot; per year'
-        document.getElementById('currencyBadge').textContent  = 'Priced in Canadian dollars'
-        var btn = document.getElementById('offerBtn')
-        var cadHref = btn.getAttribute('data-cad-href')
-        if (cadHref && cadHref !== 'REPLACE_WITH_STRIPE_CAD_PAYMENT_LINK') btn.href = cadHref
-        btn.setAttribute('aria-label', 'Claim founding member spot for $99 CAD per year')
+    /* lightbox */
+    const lb=document.getElementById('lightbox'), film=document.getElementById('filmVideo');
+    function openFilm(e){ if(e) e.preventDefault(); lb.classList.add('open'); film.currentTime=0; film.play(); }
+    document.getElementById('watchBtn').addEventListener('click', openFilm);
+    document.getElementById('navWatch').addEventListener('click', openFilm);
+    function closeLb(){ lb.classList.remove('open'); film.pause(); }
+    document.getElementById('closeBtn').addEventListener('click', closeLb);
+    lb.addEventListener('click', e=>{ if(e.target===lb) closeLb(); });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLb(); });
+
+    /* waitlist submit -> Supabase (REST, anon key is public/embeddable) */
+    const SUPABASE_URL = 'https://yfthwahxahjabfbuntys.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdGh3YWh4YWhqYWJmYnVudHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MTE4MzAsImV4cCI6MjA5NDE4NzgzMH0.VfnjNTjE7RRux6s4-3icNLQoyhTl_mGYrW3Zlz9e_kE';
+    document.getElementById('waitlistForm').addEventListener('submit', async function(e){
+      e.preventDefault();
+      const email = this.email.value.trim();
+      const firstLetter = this.first_letter.value.trim();
+      if(!email){ this.email.focus(); return; }
+      const btn = this.querySelector('button[type="submit"]');
+      const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Joining…';
+      try{
+        const res = await fetch(SUPABASE_URL + '/rest/v1/waitlist', {
+          method:'POST',
+          headers:{
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ email: email, first_letter: firstLetter || null, source: 'landing' })
+        });
+        // 409 = already on the list; treat as success
+        if(!res.ok && res.status !== 409) throw new Error('HTTP ' + res.status);
+        document.getElementById('formWrap').style.display='none';
+        document.getElementById('thanks').style.display='block';
+      }catch(err){
+        btn.disabled = false; btn.textContent = orig;
+        alert('Sorry — something went wrong joining the waitlist. Please try again.');
       }
-
-      function applyUSD() {
-        document.getElementById('offerWas').textContent       = 'Founding rate — locked for life'
-        document.getElementById('offerCurrency').innerHTML    = 'USD &middot; per year'
-        document.getElementById('currencyBadge').textContent  = 'Priced in US dollars'
-        var btn = document.getElementById('offerBtn')
-        var usdHref = btn.getAttribute('data-usd-href')
-        if (usdHref && usdHref !== 'REPLACE_WITH_STRIPE_USD_PAYMENT_LINK') btn.href = usdHref
-        btn.setAttribute('aria-label', 'Claim founding member spot for $99 USD per year')
-      }
-
-      function fallbackByTimezone() {
-        try {
-          var tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-          if (CA_ZONES.indexOf(tz) !== -1) { applyCAD() } else { applyUSD() }
-        } catch (e) { applyUSD() }
-      }
-
-      fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) })
-        .then(function (r) { return r.json() })
-        .then(function (d) {
-          if (d && d.country_code === 'CA') { applyCAD() }
-          else { applyUSD() }
-        })
-        .catch(fallbackByTimezone)
-    })()
+    });
   </script>
-
-  <!-- ── SCROLL-TRIGGERED RISE — glass panels light up on entry ── -->
-  <script>
-    (function () {
-      var io = new IntersectionObserver(function (es) {
-        es.forEach(function (e) {
-          if (e.isIntersecting) e.target.classList.add('lit')
-        })
-      }, { threshold: 0.18 })
-      document.querySelectorAll('.glass').forEach(function (el) { io.observe(el) })
-
-      // Respect reduced motion: show everything, stop and remove the sky video
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.querySelectorAll('.glass').forEach(function (el) { el.classList.add('lit') })
-        var v = document.querySelector('.sky video')
-        if (v) { v.pause(); v.remove() }
-      }
-    })()
-  </script>
-
 </body>
 </html>
